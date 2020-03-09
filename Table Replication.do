@@ -638,6 +638,7 @@ restore
 
 * --------------------------------------------------------------
 **** Table 7: ITT effects on saings outcomes (Pure replication) 
+
 	************ Final variable does not replicate ***************
 
 	label var logct_ak2_all  "Total savings (log)"
@@ -651,7 +652,7 @@ restore
 			eststo DiffIn`var': tobit logct_ak2_`var' treat i.blocks if post==1 & ss==1 [pweight=weightlong], vce(cluster vid) ll
 		}
 			esttab, starlevels(* 0.1 ** 0.05 *** 0.01 ) se(%8.3f) stat( N chi2) drop(*block*)
-			outreg2 [DiffIn*] using "$outreg\Table7", excel replace 
+
 
 
 **** Table 7: ITT effects on savings outcomes - code for latex table
@@ -742,6 +743,232 @@ preserve
 restore				
 			
 			
+* --------------------------------------------------------------
+**** Table 8: ITT Effects on Credit Outcomes
+
+
+* Create mean and sd of coefficients. Note that for log values, we just impute 
+su anyloan numloan anyinvloan numinvloan  if post==0 & ss==1
+	svyset vid [pweight=weightlong], strata(blocks)
+	svy: mean anyloan numloan anyinvloan numinvloan if post==0 & ss==1
+		*outreg2 using "$outreg/Table8meansd", excel replace sidew stats(N coef) noaster
+	estat sd
+
+	* Population estimate of non-zero values
+foreach var in logtotloan logtotagriloan logtotbusloan {	
+	svy: mean `var' if post==0 & ss==1
+		*outreg2 using "$outreg/Table8meansd", excel append sidew stats(N coef) noaster
+	}
+	
+	* Sample stnadrd deviation
+	su logtotloan logtotagriloan logtotbusloan if post==0 & ss==1
+	
+	
+eststo clear
+	* regressions
+	eststo DiM: qui reg `var' treat i.blocks if post==1 & ss==1 [pweight=weightlong], vce(cluster vid)
+			*outreg2 [Di*] using "$outreg/Table8", excel replace ctitle("initial")
+
+	
+foreach var in anyloan  numloan anyinvloan numinvloan {
+	eststo clear
+			eststo DiM: reg `var' treat i.blocks if post==1 & ss==1 [pweight=weightlong], vce(cluster vid)
+				* Create lag.
+				cap drop lag`var'
+				cap drop dif`var'
+				bys vid hhid (post): gen lag`var'=`var'[1]
+				gen dif`var'=`var'-lag`var'
+			eststo DiMLag: qui reg `var' treat lag`var' i.blocks if post==1 & ss==1 [pweight=weightlong], vce(cluster vid)
+			eststo DiD: qui reg `var' treat treatXr3 post i.blocks if  ss==1 [pweight=weightlong], vce(cluster vid)
+			eststo DiFE: qui reg dif`var' treat i.blocks if post==1 &  ls_fd==1 [pweight=weightlong], vce(cluster vid)
+			esttab, starlevels(* 0.1 ** 0.05 *** 0.01 ) b(%8.3f) se(%8.2f) stat( N chi2) drop(*block*)
+			*outreg2 [Di*] using "$outreg/Table8", excel append  bdec(3) bfmt(f) sdec(2) sfmt(f)
+			}
+
+eststo clear
+		foreach var in logct_totloan logct_totagriloan logct_totbusloan {
+			eststo Model`var': tobit `var' treat i.blocks if post==1 & ss==1 [pweight=weightlong], vce(cluster vid) ll
+	}
+			*	esttab, starlevels(* 0.1 ** 0.05 *** 0.01 ) b(%8.3f) se(%8.2f) stat( N chi2) drop(*block*)
+			*outreg2 [Model*] using "$outreg/Table8_log", excel replace  bdec(3) bfmt(f) sdec(2) sfmt(f)
+
+
+
+**** Table 8: Effects on credit outcomes - code for latex table
+
+* non-log variables
+gl tab7_1 anyloan numloan anyinvloan numinvloan
+
+local listsize_1 : list sizeof global(tab7_1)
+tokenize $tab7_1
+
+forv i = 1/`listsize_1' {
+	quietly {
+		* baseline mean
+		su ``i'' if post==0 & ss==1
+		svyset vid [pweight=weightlong], strata(blocks)
+			svy: mean ``i'' if post==0 & ss==1
+			estat sd
+			matrix Avg = r(mean)
+			matrix Sd = r(sd)
+				scalar ``i''_par_1 = Avg[1,1]
+				scalar ``i''_se_1 = Sd[1,1]
+		* difference in means
+		reg ``i'' treat i.blocks if post==1 & ss==1 [pweight=weightlong], vce(cluster vid)
+			scalar ``i''_par_2 = _b[treat]
+			scalar ``i''_se_2 = _se[treat]
+			scalar df_2_`i' = `e(df_r)'
+		* difference in means w/ lag
+		* Create lag.
+				cap drop lag``i''
+				cap drop dif``i''
+				bys vid hhid (post): gen lag``i''=``i''[1]
+				gen dif``i''=``i''-lag``i''
+		reg ``i'' treat lag``i'' i.blocks if post==1 & ss==1 [pweight=weightlong], vce(cluster vid)	
+			scalar ``i''_par_3 = _b[treat]
+			scalar ``i''_se_3 = _se[treat]
+			scalar df_3_`i' = `e(df_r)'
+		* difference in difference
+		reg ``i'' treat treatXr3 post i.blocks if  ss==1 [pweight=weightlong], vce(cluster vid)
+			scalar ``i''_par_4 = _b[treatXr3]
+			scalar ``i''_se_4 = _se[treatXr3]
+			scalar df_4_`i' = `e(df_r)'
+		* first difference
+		reg dif``i'' treat i.blocks if post==1 &  ls_fd==1 [pweight=weightlong], vce(cluster vid)
+			scalar ``i''_par_5 = _b[treat]
+			scalar ``i''_se_5 = _se[treat]
+			scalar df_5_`i' = `e(df_r)'
+
+	* matrix for table
+		matrix mat_`i'_1 = (``i''_par_1,``i''_se_1)
+		matrix mat_`i'_2 = (``i''_par_2,``i''_se_2)
+		matrix mat_`i'_3 = (``i''_par_3,``i''_se_3)
+		matrix mat_`i'_4 = (``i''_par_4,``i''_se_4)
+		matrix mat_`i'_5 = (``i''_par_5,``i''_se_5)
+	}	
+}	
+
+* log variables
+gl tab7_2 logtotloan logtotagriloan logtotbusloan
+
+local listsize_2 : list sizeof global(tab7_2)
+tokenize $tab7_2
+
+forv i = 1/`listsize_2' {
+	*quietly {
+		* baseline mean
+		svy: mean ``i'' if post==0 & ss==1
+			scalar ``i''_par_1 = _b[``i'']
+		su ``i'' if post==0 & ss==1
+			scalar ``i''_se_1 = `r(sd)'
+		
+	* matrix for table
+		matrix ln_mat_`i'_1 = (``i''_par_1,``i''_se_1)	
+}
+			
+gl tab7_2 logct_totloan logct_totagriloan logct_totbusloan	
+tokenize $tab7_2
+	
+	forv i = 1/`listsize_2' {
+		* difference in means
+		tobit ``i'' treat i.blocks if post==1 & ss==1 [pweight=weightlong], vce(cluster vid) ll
+			scalar ``i''_par_2 = _b[treat]
+			scalar ``i''_se_2 = _se[treat]
+			scalar df_6_`i' = `e(df_r)'
+	
+	* matrix for table
+		matrix ln_mat_`i'_2 = (``i''_par_2,``i''_se_2)
+	*}	
+}			
+		
+matrix A = mat_1_1
+matrix B = mat_1_2
+matrix C = mat_1_3
+matrix D = mat_1_4
+matrix E = mat_1_5
+
+forv i = 2/`listsize_1' { // appends into single matrix
+	matrix A = A \ mat_`i'_1
+	matrix B = B \ mat_`i'_2
+	matrix C = C \ mat_`i'_3
+	matrix D = D \ mat_`i'_4
+	matrix E = E \ mat_`i'_5
+}
+
+matrix F = ln_mat_1_1
+matrix G = ln_mat_1_2
+
+forv i = 2/`listsize_2' { // appends into single matrix
+	matrix F = F \ ln_mat_`i'_1
+	matrix G = G \ ln_mat_`i'_2
+}
+	
+	* add in log-stats to matrices A and B
+	matrix A =  A \ F
+	matrix B =  B \ G
+
+* add significance level stars
+gl mat A B C D E
+local mlistsize : list sizeof global(mat)
+tokenize $mat
+gl allvars anyloan numloan anyinvloan numinvloan logtotloan logtotagriloan logtotbusloan
+local listsize_all : list sizeof global(allvars)
+
+forv m = 2/`mlistsize' {
+matrix stars``m''=J(`listsize_1',2,0)
+		forvalues k = 1/`listsize_1'{
+			matrix stars``m''[`k',1] =   ///
+			(abs(``m''[`k',1]/``m''[`k',2]) > invttail(df_`m'_`k',0.1/2)) +  ///
+			(abs(``m''[`k',1]/``m''[`k',2]) > invttail(df_`m'_`k',0.05/2)) +  ///
+			(abs(``m''[`k',1]/``m''[`k',2]) > invttail(df_`m'_`k',0.01/2))
+		}
+}
+
+matrix starsG=J(`listsize_2',2,0)
+		forvalues k = 1/`listsize_2'{
+			matrix starsG[`k',1] =   ///
+			(abs(G[`k',1]/G[`k',2]) > invttail(df_6_`k',0.1/2)) +  ///
+			(abs(G[`k',1]/G[`k',2]) > invttail(df_6_`k',0.05/2)) +  ///
+			(abs(G[`k',1]/G[`k',2]) > invttail(df_6_`k',0.01/2))
+		}
+
+matrix starsB = starsB \ starsG
+
+
+* Table
+frmttable using tab8.tex, tex statmat(A) sdec(3) substat(1) coljust(l;c;l;l)  ///
+title("Table 5 - ITT effects on credit outcomes") ///
+ctitle("","(1)"\"Outcome"\"","Baseline mean") ///
+rtitle("Household had any loan in past 12 months"\""\"Number of loans active within past 12 months"\""\ ///
+		"Household took out loan for investment purposes in past 12 months"\""\ ///
+		"Number of investment loans"\""\"Total loan amount (log)^{a}"\""\ ///
+		"Total amount borrowed for agricultural investments (log)^{a}"\ ///
+		""\"Total amount borrowed for business purposes (log)^{a}"\"") replace
+frmttable using tab8.tex, tex statmat(B) sdec(3) substat(1) coljust(l;c;l;l) annotate(starsB) asymbol(*,**,***) ///
+ctitle("(2)"\"Difference in means"\"") merge		
+frmttable using tab8.tex, tex statmat(C) sdec(3) substat(1) coljust(l;c;l;l) annotate(starsC) asymbol(*,**,***) ///
+ctitle("(2)"\"Difference in means"\"with lag") merge
+frmttable using tab8.tex, tex statmat(D) sdec(3) substat(1) coljust(l;c;l;l) annotate(starsD) asymbol(*,**,***) ///
+ctitle("(3)"\"Difference-in-difference"\"") merge		
+frmttable using tab8.tex, tex statmat(E) sdec(3) substat(1) coljust(l;c;l;l) annotate(starsE) asymbol(*,**,***) ///
+ctitle("(4)"\"First-difference"\"") merge		
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 	
 	
 	
