@@ -954,7 +954,114 @@ frmttable using tab8.tex, tex statmat(E) sdec(3) substat(1) coljust(l;c;l;l) ann
 ctitle("(4)"\"First-difference"\"") merge		
 
 
+*******************************
+* Table 9. ITT Effects on Maize Planting Practice and Outcomes
+* first 3 variables are for all observations; last three are long.
+**************************************************************************************************
 
+* How to do this: loop and replace manually
+
+capture drop xxvar xxvar2 line
+gen xxvar=""
+gen xxvar2=.
+gen line=_n
+
+format xxvar2 %9.2f
+	svyset vid [pweight=weightall], strata(blocks)
+	
+	svy: mean fertusemaize if post==0 & ls==1
+	matrix b=e(b)
+	local b=b[1,1]
+	replace xxvar2=int(`b'*1000+0.5)/1000 if line==1
+	replace xxvar=string(xxvar2) if line==1
+	estat sd
+	matrix sd=r(sd)
+	local sd=sd[1,1]
+	replace xxvar2=int(`sd'*1000+0.5)/1000 if line==2
+	replace xxvar="["+string(xxvar2)+"]" if line==2
+
+	local run=2
+foreach var in 	acresmaize logqmaize {
+	svy: mean `var' if post==0 & ls==1
+	matrix b=e(b)
+	local b=b[1,1]
+	replace xxvar2=int(`b'*1000+0.5)/1000 if line==`run'+1
+	replace xxvar=string(xxvar2) if line==`run'+1
+	estat sd
+	matrix sd=r(sd)
+	local sd=sd[1,1]
+	replace xxvar2=int(`sd'*1000+0.5)/1000 if line==`run'+2
+	replace xxvar="["+string(xxvar2)+"]" if line==`run'+2
+	local run=`run'+2
+	}
+
+	svyset vid [pweight=weightlong], strata(blocks)
+foreach var in anymaizesale logvalsale logvalmaizesale {
+	svy: mean `var' if post==0 & ss==1
+	matrix b=e(b)
+	local b=b[1,1]
+	replace xxvar2=int(`b'*1000+0.5)/1000 if line==`run'+1
+	replace xxvar=string(xxvar2) if line==`run'+1
+	estat sd
+	matrix sd=r(sd)
+	local sd=sd[1,1]
+	replace xxvar2=int(`sd'*1000+0.5)/1000 if line==`run'+2
+	replace xxvar="["+string(xxvar2)+"]" if line==`run'+2
+	local run=`run'+2
+	}
+
+
+		eststo DiM: qui reg fertusemaize treat i.blocks if post==1 & ls==1 [pweight=weightall], vce(cluster vid)
+			outreg2 [Di*] using "$outreg\Table9", excel replace ctitle("initial")
+
+	
+foreach var in fertusemaize acresmaize {
+eststo clear
+			eststo DiM: qui reg `var' treat i.blocks if post==1 & ls==1 [pweight=weightall], vce(cluster vid)
+				* Create lag.
+				cap drop lag`var'
+				cap drop dif`var'
+				bys hhidnum (post): gen lag`var'=`var'[1]
+				gen dif`var'=`var'-lag`var'
+			eststo DiMLag: qui reg `var' treat lag`var' i.blocks if post==1 & ls==1 [pweight=weightall], vce(cluster vid)
+			eststo DiD: qui reg `var' treat treatXr3 post i.blocks if  ls==1 [pweight=weightall], vce(cluster vid)
+			eststo DiFE: qui reg dif`var' treat i.blocks if post==1 &  ls_fd==1 [pweight=weightall], vce(cluster vid)
+			esttab, starlevels(* 0.1 ** 0.05 *** 0.01 ) b(%8.3f) se(%8.2f)  stat( N chi2) drop(*block*)
+			outreg2 [Di*] using "$outreg\Table9", excel append  bdec(3) bfmt(f) sdec(2) sfmt(f)
+			}
+
+foreach var in anymaizesale {
+eststo clear
+			eststo DiM: qui reg `var' treat i.blocks if post==1 & ls==1 [pweight=weightlong], vce(cluster vid)
+				* Create lag.
+				cap drop lag`var'
+				cap drop dif`var'
+				bys hhidnum (post): gen lag`var'=`var'[1]
+				gen dif`var'=`var'-lag`var'
+			eststo DiMLag: qui reg `var' treat lag`var' i.blocks if post==1 & ls==1 [pweight=weightlong], vce(cluster vid)
+			eststo DiD: qui reg `var' treat treatXr3 post i.blocks if  ls==1 [pweight=weightlong], vce(cluster vid)
+			eststo DiFE: qui reg dif`var' treat i.blocks if post==1 &  ls_fd==1 [pweight=weightlong], vce(cluster vid)
+			esttab, starlevels(* 0.1 ** 0.05 *** 0.01 ) b(%8.3f) se(%8.2f)  stat( N chi2) drop(*block*)
+			outreg2 [Di*] using "$outreg\Table9", excel append  bdec(3) bfmt(f) sdec(2) sfmt(f)
+			}
+			
+			
+eststo clear
+		foreach var in logct_qmaize {
+			eststo DiffIn`var': tobit `var' treat i.blocks if post==1 & ss==1 [pweight=weightall], vce(cluster vid) ll
+	}
+				esttab, starlevels(* 0.1 ** 0.05 *** 0.01 ) b(%8.3f) se(%8.2f) stat( N chi2) drop(*block*)
+			outreg2 [Diff*] using "$outreg\Table9", excel append  bdec(3) bfmt(f) sdec(2) sfmt(f)
+			
+eststo clear
+		foreach var in logct_valsale logct_valmaizesale {
+			eststo DiffIn`var': tobit `var' treat i.blocks if post==1 & ss==1 [pweight=weightlong], vce(cluster vid) ll
+	}
+				esttab, starlevels(* 0.1 ** 0.05 *** 0.01 ) b(%8.3f) se(%8.2f) stat( N chi2) drop(*block*)
+			outreg2 [Diff*] using "$outreg\Table9", excel append  bdec(3) bfmt(f) sdec(2) sfmt(f)
+
+				
+**************************************************************************************************
 
 
 
