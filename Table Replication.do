@@ -41,52 +41,7 @@ egen hhidnum = group(vid hhid)
 xtset hhidnum t
 
 lab var logaeconsifl "17-Food consumption per week per adult equivalent (MK, log)"
-
-
-
-* --------------------------------------------------------------
-**** Table 3: Balance - excel (Pure replication method)
 	
-preserve	
-			
-	keep if post==0 & ls==1
-	
-	* 1: N, Mean, SD for full sample (changed to aweights)
-	su fspoor4 meals logaeconsifl iganum2_ia pat4pln hb10 cemfloor assets if ls==1 & post==0
-	mean fspoor4 meals logaeconsifl iganum2_ia pat4pln hb10 cemfloor assets if ls==1 & post==0 [aweight=weightall], vce(cluster vid)
-		outreg2 using table3, stats(N coef sd) sidew noaster label excel replace
-		
-	* 2: Treatment mean for full sample
-	mean fspoor4 meals logaeconsifl iganum2_ia pat4pln hb10 cemfloor assets if ls==1 & post==0 & treat==1 [pweight=weightall], vce(cluster vid)	
-		outreg2 using table3, stats(coef) sidew noaster ctitle(Treatment average) label excel append
-		clear matrix 	
-	
-	* 3: Control mean for full sample
-	mean fspoor4 meals logaeconsifl iganum2_ia pat4pln hb10 cemfloor assets if ls==1 & post==0 & treat==0 [pweight=weightall], vce(cluster vid)
-		outreg2 using table3, sidew stats(coef) noaster ctitle(Control average) label excel append
-		eststo clear
-	
-	* 4: N, Mean, SD for limited sample - Log total savings - (changed to aweights)
-	mean logak2_all if ss==1 & post==0 [aweight=weightlong], vce(cluster vid)
-		outreg2 using table3, sidew stats(N coef sd) noaster label excel append
-	
-	* 5: Treatment mean for limited sample	
-	mean logak2_all if ss==1 & post==0 & treat==1  [pweight=weightlong], vce(cluster vid)
-		outreg2 using table3, sidew stats(coef) noaster label excel append
-	
-	* 6: Control mean for limited sample	
-	mean logak2_all if ss==1 & post==0 & treat==0  [pweight=weightlong], vce(cluster vid)
-		outreg2 using table3, sidew stats(coef) noaster label excel append
-		
-	* 7: Balance tests
-	foreach var in fspoor4 meals logaeconsifl iganum2_ia   pat4pln hb10 cemfloor assets {
-		eststo DiM`var': qui reg `var' treat i.blocks if ls==1 & post==0 [pweight=weightall], vce(cluster vid)
-	}				
-	esttab, starlevels(* 0.1 ** 0.05 *** 0.01 ) t(%8.3f) stat( N chi2) drop(*block*)
-		outreg2 [DiM*] using table3_diff, stats(coef tstat) noparen excel replace
-		reg logak2_all treat i.blocks if ls==1 & post==0 [pweight=weightlong], vce(cluster vid)
-
-restore	
 	
 	
 **** Table 3: Balance - code for latex table
@@ -201,7 +156,8 @@ matrix T = A \ B \ C
 * Table
 frmttable using tab3_summary.tex, tex statmat(T) sdec(2) coljust(l;c;l;l) ///
 title("Table 3 - Summmary Statistics \& Treatment Balance") ///
-ctitle("","(1)","(2)","(3)","(4)","(5)","(6)"\"Variable","N","Mean","sd","Treatment average","Control average","Difference (t-value)") ///
+ctitle("","(1)","(2)","(3)","(4)","(5)","(6)"\"Variable","N","Mean","sd","Treatment","Control","Difference"\ ///
+		"","","","","average","average","(t-value)") ///
 rtitle("Project outcomes"\"Number of months with fewer than three meals a day"\"Number of meals yesterday"\ ///
 		"17-Food consumption per week per adult equivalent (MK, log)"\ ///
 		"Number of income-generating activities (including agriculture and livestock)"\ ///
@@ -265,20 +221,6 @@ restore
 	
 	
 * --------------------------------------------------------------
-**** Table 4: VSLA membership (Pure replication method)
-
-svyset vid [pweight=weightall], strata(blocks)
-svy: mean vslamember if treat==0 & ls==1 & post==0
-svy: mean vslamember if treat==1 & ls==1 & post==0
-svy: mean vslamember if treat==0 & ls==1 & post==1
-svy: mean vslamember if treat==1 & ls==1 & post==1
-reg vslamem treat i.blocks if ls==1 & post==0 [pweight=weightall], vce(cluster vid)
-reg vslamem treat i.blocks if ls==1 & post==1 [pweight=weightall], vce(cluster vid)
-reg vslamem post i.blocks if ls==1 & treat==0 [pweight=weightall], vce(cluster vid)
-reg vslamem post i.blocks if ls==1 & treat==1 [pweight=weightall], vce(cluster vid)
-reg vslamem treat t treatXr3 i.blocks  if ls==1 [pweight=weightall], vce(cluster vid) 
-	
-
 **** Table 4: Membership - code for latex table
 
 svyset vid [pweight=weightall], strata(blocks)
@@ -330,58 +272,6 @@ rtitle("Baseline (2009)"\"Endline (2011)"\"Difference") replace
 
 		
 * --------------------------------------------------------------		
-**** Table 5: Effects on predefined outcomes (Pure replication)
-
-foreach var in fspoor4 meals logaeconsifl iganum2_ia pat4pln hb10 cemfloor assets {
-eststo clear
-			eststo DiM: qui reg `var' treat i.blocks if post==1 & ls==1 [pweight=weightall], vce(cluster vid)
-				* Create lag.
-				cap drop lag`var'
-				cap drop dif`var'
-				bys hhidnum (post): gen lag`var'=`var'[1]
-				gen dif`var'=`var'-lag`var'
-			eststo DiMLag: qui reg `var' treat lag`var' i.blocks if post==1 & ls==1 [pweight=weightall], vce(cluster vid)
-			eststo DiD: qui reg `var' treat treatXr3 post i.blocks if  ls==1 [pweight=weightall], vce(cluster vid)
-			eststo DiFE: qui reg dif`var' treat i.blocks if post==1 &  ls_fd==1 [pweight=weightall], vce(cluster vid)
-			esttab, starlevels(* 0.1 ** 0.05 *** 0.01 ) b(%8.3f) se(%8.2f) stat( N chi2) drop(*block*)
-			}
-
-** Table 5 savings			
-local var="logct_ak2_all "
-eststo clear
-			
-			eststo DiM: quietly tobit `var' treat i.blocks if post==1 & ls==1 [pweight=weightlong], vce(cluster vid) ll
-			esttab, starlevels(* 0.1 ** 0.05 *** 0.01 ) b(%8.3f) se(%8.2f) stat( N chi2) drop(*block*)		
-
-** Note: to compute multiple hypothesis corrected sharpened q-values, 
-** use the programs on Michael Anderson's website. 			
-** You will need to manually input the unadjusted p-values that are created with the following commands
-		* The following outputs the unadjusted p-values needed for that procedure
-/*	foreach var in fspoor4 meals logaeconsifl iganum2_ia pat4pln hb10 cemfloor assets {
-eststo clear
-			eststo DiM: qui reg `var' treat i.blocks if post==1 & ls==1 [pweight=weightall], vce(cluster vid)
-				* Create lag.
-				cap drop lag`var'
-				cap drop dif`var'
-				bys hhidnum (post): gen lag`var'=`var'[1]
-				gen dif`var'=`var'-lag`var'
-			eststo DiMLag: qui reg `var' treat lag`var' i.blocks if post==1 & ls==1 [pweight=weightall], vce(cluster vid)
-			eststo DiD: qui reg `var' treat treatXr3 post i.blocks if  ls==1 [pweight=weightall], vce(cluster vid)
-			eststo DiFE: qui reg dif`var' treat i.blocks if post==1 &  ls_fd==1 [pweight=weightall], vce(cluster vid)
-			esttab, starlevels(* 0.1 ** 0.05 *** 0.01 ) b(%8.3f) p(%8.4f) stat( N chi2) drop(*block*) nopar
-			}
-
-** Table 5 savings			
-local var="logct_ak2_all "
-eststo clear
-			
-			eststo DiM: quietly tobit `var' treat i.blocks if post==1 & ls==1 [pweight=weightlong], vce(cluster vid) ll
-			esttab, starlevels(* 0.1 ** 0.05 *** 0.01 ) b(%8.3f) p(%8.4f) stat( N chi2) drop(*block*) nopar		
-*/				
-					
-	
-
-
 **** Table 5: Effects - code for latex table
 
 gl tab5 fspoor4 meals logaeconsifl iganum2_ia pat4pln hb10 cemfloor assets
@@ -480,18 +370,18 @@ matrix starsE=J(1,2,0)
 * Table
 frmttable using tab5.tex, tex statmat(A) sdec(3) substat(1) coljust(l;c;l;l) annotate(starsA) asymbol(*,**,***) ///
 title("Table 5 - Effects on predefined outcomes") ///
-ctitle("","(1)"\"Outcome","Difference in means") ///
+ctitle("","(1)"\"Outcome","Difference in"\"","means") ///
 rtitle("Number of months with fewer than three meals a day"\""\"Number of meals yesterday"\""\ ///
 		"17-Food consumption per week per adult equivalent (MK, log)"\""\ ///
 		"Number of income-generating activities (including agriculture and livestock)"\""\ ///
 		"Per capita expenditure predicted by USAID PAT (log)"\""\ ///
 		"Size of house (number of rooms)"\""\"House has cement floor"\""\"Asset count"\"") replace
 frmttable using tab5.tex, tex statmat(B) sdec(3) substat(1) coljust(l;c;l;l) annotate(starsB) asymbol(*,**,***) ///
-ctitle("(2)"\"Difference in means with lag") merge
+ctitle("(2)"\"Difference in"\"means with lag") merge
 frmttable using tab5.tex, tex statmat(C) sdec(3) substat(1) coljust(l;c;l;l) annotate(starsC) asymbol(*,**,***) ///
-ctitle("(3)"\"Difference-in-difference") merge		
+ctitle("(3)"\"Difference-in"\"-difference") merge		
 frmttable using tab5.tex, tex statmat(D) sdec(3) substat(1) coljust(l;c;l;l) annotate(starsD) asymbol(*,**,***) ///
-ctitle("(4)"\"First-difference") merge	
+ctitle("(4)"\"First-"\"difference") merge	
 frmttable using tab5.tex, tex statmat(E) sdec(3) substat(1) coljust(l;c;l;l) annotate(starsE) asymbol(*,**,***) ///
 rtitle("Total savings (log)") append		
 	
@@ -499,28 +389,6 @@ rtitle("Total savings (log)") append
 	
 		
 * --------------------------------------------------------------	
-**** Table 6: Regression without split households (Pure replication)			
-	preserve
-	keep if split==0
-
-	foreach var in fspoor4 meals logaeconsifl iganum2_ia pat4pln hb10 cemfloor assets {
-	eststo clear
-				eststo DiM: qui reg `var' treat i.blocks if post==1 & ls==1 [pweight=weightall], vce(cluster vid)
-				eststo DiMLag: qui reg `var' treat lag`var' i.blocks if post==1 & ls==1 [pweight=weightall], vce(cluster vid)
-				eststo DiD: qui reg `var' treat treatXr3 post i.blocks if  ls==1 [pweight=weightall], vce(cluster vid)
-				eststo DiFE: qui reg dif`var' treat i.blocks if post==1 &  ls_fd==1 [pweight=weightall], vce(cluster vid)
-				esttab, starlevels(* 0.1 ** 0.05 *** 0.01 ) b(%8.3f) se(%8.2f) stat( N chi2) drop(*block*)
-				}
-			
-	* Table 6 savings			
-	local var="logct_ak2_all "
-	eststo clear
-				eststo DiM: quietly tobit `var' treat i.blocks if post==1 & ls==1 [pweight=weightlong], vce(cluster vid) ll
-				esttab, starlevels(* 0.1 ** 0.05 *** 0.01 ) b(%8.3f) se(%8.2f) stat( N chi2) drop(*block*)
-				
-	restore	
-	
-	
 **** Table 6: Regression without split households - code for latex table
 preserve
 	keep if split==0
@@ -617,16 +485,16 @@ matrix starsE=J(1,2,0)
 * Table
 frmttable using tab6.tex, tex statmat(A) sdec(3) substat(1) coljust(l;c;l;l) annotate(starsA) asymbol(*,**,***) ///
 title("Table 6 - Regressions without split households") ///
-ctitle("","(1)"\"Outcome","Difference in means"\"","no split households") ///
+ctitle("","(1)"\"Outcome","Difference in"\"","means"\"","no split households") ///
 rtitle("Number of months with fewer than three meals a day"\""\"Number of meals yesterday"\""\ ///
 		"17-Food consumption per week per adult equivalent (MK, log)"\""\ ///
 		"Number of income-generating activities (including agriculture and livestock)"\""\ ///
 		"Per capita expenditure predicted by USAID PAT (log)"\""\ ///
 		"Size of house (number of rooms)"\""\"House has cement floor"\""\"Asset count"\"") replace
 frmttable using tab6.tex, tex statmat(B) sdec(3) substat(1) coljust(l;c;l;l) annotate(starsB) asymbol(*,**,***) ///
-ctitle("(2)"\"Difference in means with lag"\"no split households") merge
+ctitle("(2)"\"Difference in"\"means with lag"\"no split households") merge
 frmttable using tab6.tex, tex statmat(C) sdec(3) substat(1) coljust(l;c;l;l) annotate(starsC) asymbol(*,**,***) ///
-ctitle("(3)"\"Difference-in-difference"\"no split households") merge		
+ctitle("(3)"\"Difference-in"\"-difference"\"no split households") merge		
 frmttable using tab6.tex, tex statmat(D) sdec(3) substat(1) coljust(l;c;l;l) annotate(starsD) asymbol(*,**,***) ///
 ctitle("(4)"\"First-difference"\"no split households") merge	
 frmttable using tab6.tex, tex statmat(E) sdec(3) substat(1) coljust(l;c;l;l) annotate(starsE) asymbol(*,**,***) ///
@@ -637,26 +505,9 @@ restore
 
 
 * --------------------------------------------------------------
-**** Table 7: ITT effects on saings outcomes (Pure replication) 
-
-	************ Final variable does not replicate ***************
-
-	label var logct_ak2_all  "Total savings (log)"
-	label var logct_ak2_vsla "VSLA savings (log)"
-	label var logct_ak2_nonvsla "Non-VSLA savings (log)"
-	label var logct_ak2_frrel "Savings with friend/relative (log)"
-	label var logct_ak2_bank "Savings with bank (log)"
-	label var logct_ak2_home "Savings at home (log)"
-			eststo clear
-		qui foreach var in all vsla nonvsla frrel home bank {
-			eststo DiffIn`var': tobit logct_ak2_`var' treat i.blocks if post==1 & ss==1 [pweight=weightlong], vce(cluster vid) ll
-		}
-			esttab, starlevels(* 0.1 ** 0.05 *** 0.01 ) se(%8.3f) stat( N chi2) drop(*block*)
-
-
-
 **** Table 7: ITT effects on savings outcomes - code for latex table
 
+	************ Final variable does not replicate ***************
 
 gl tab7 all vsla nonvsla frrel home bank
 
@@ -744,63 +595,13 @@ restore
 			
 			
 * --------------------------------------------------------------
-**** Table 8: ITT Effects on Credit Outcomes
-
-
-* Create mean and sd of coefficients. Note that for log values, we just impute 
-su anyloan numloan anyinvloan numinvloan  if post==0 & ss==1
-	svyset vid [pweight=weightlong], strata(blocks)
-	svy: mean anyloan numloan anyinvloan numinvloan if post==0 & ss==1
-		*outreg2 using "$outreg/Table8meansd", excel replace sidew stats(N coef) noaster
-	estat sd
-
-	* Population estimate of non-zero values
-foreach var in logtotloan logtotagriloan logtotbusloan {	
-	svy: mean `var' if post==0 & ss==1
-		*outreg2 using "$outreg/Table8meansd", excel append sidew stats(N coef) noaster
-	}
-	
-	* Sample stnadrd deviation
-	su logtotloan logtotagriloan logtotbusloan if post==0 & ss==1
-	
-	
-eststo clear
-	* regressions
-	eststo DiM: qui reg `var' treat i.blocks if post==1 & ss==1 [pweight=weightlong], vce(cluster vid)
-			*outreg2 [Di*] using "$outreg/Table8", excel replace ctitle("initial")
-
-	
-foreach var in anyloan  numloan anyinvloan numinvloan {
-	eststo clear
-			eststo DiM: reg `var' treat i.blocks if post==1 & ss==1 [pweight=weightlong], vce(cluster vid)
-				* Create lag.
-				cap drop lag`var'
-				cap drop dif`var'
-				bys vid hhid (post): gen lag`var'=`var'[1]
-				gen dif`var'=`var'-lag`var'
-			eststo DiMLag: qui reg `var' treat lag`var' i.blocks if post==1 & ss==1 [pweight=weightlong], vce(cluster vid)
-			eststo DiD: qui reg `var' treat treatXr3 post i.blocks if  ss==1 [pweight=weightlong], vce(cluster vid)
-			eststo DiFE: qui reg dif`var' treat i.blocks if post==1 &  ls_fd==1 [pweight=weightlong], vce(cluster vid)
-			esttab, starlevels(* 0.1 ** 0.05 *** 0.01 ) b(%8.3f) se(%8.2f) stat( N chi2) drop(*block*)
-			*outreg2 [Di*] using "$outreg/Table8", excel append  bdec(3) bfmt(f) sdec(2) sfmt(f)
-			}
-
-eststo clear
-		foreach var in logct_totloan logct_totagriloan logct_totbusloan {
-			eststo Model`var': tobit `var' treat i.blocks if post==1 & ss==1 [pweight=weightlong], vce(cluster vid) ll
-	}
-			*	esttab, starlevels(* 0.1 ** 0.05 *** 0.01 ) b(%8.3f) se(%8.2f) stat( N chi2) drop(*block*)
-			*outreg2 [Model*] using "$outreg/Table8_log", excel replace  bdec(3) bfmt(f) sdec(2) sfmt(f)
-
-
-
 **** Table 8: Effects on credit outcomes - code for latex table
 
 * non-log variables
-gl tab7_1 anyloan numloan anyinvloan numinvloan
+gl tab8_1 anyloan numloan anyinvloan numinvloan
 
-local listsize_1 : list sizeof global(tab7_1)
-tokenize $tab7_1
+local listsize_1 : list sizeof global(tab8_1)
+tokenize $tab8_1
 
 forv i = 1/`listsize_1' {
 	quietly {
@@ -849,10 +650,10 @@ forv i = 1/`listsize_1' {
 }	
 
 * log variables
-gl tab7_2 logtotloan logtotagriloan logtotbusloan
+gl tab8_2 logtotloan logtotagriloan logtotbusloan
 
-local listsize_2 : list sizeof global(tab7_2)
-tokenize $tab7_2
+local listsize_2 : list sizeof global(tab8_2)
+tokenize $tab8_2
 
 forv i = 1/`listsize_2' {
 	*quietly {
@@ -937,31 +738,390 @@ matrix starsB = starsB \ starsG
 
 * Table
 frmttable using tab8.tex, tex statmat(A) sdec(3) substat(1) coljust(l;c;l;l)  ///
-title("Table 5 - ITT effects on credit outcomes") ///
-ctitle("","(1)"\"Outcome"\"","Baseline mean") ///
+title("Table 8 - ITT effects on credit outcomes") ///
+ctitle("","(1)"\"Outcome","Baseline mean"\"","") ///
 rtitle("Household had any loan in past 12 months"\""\"Number of loans active within past 12 months"\""\ ///
 		"Household took out loan for investment purposes in past 12 months"\""\ ///
 		"Number of investment loans"\""\"Total loan amount (log)^{a}"\""\ ///
 		"Total amount borrowed for agricultural investments (log)^{a}"\ ///
 		""\"Total amount borrowed for business purposes (log)^{a}"\"") replace
 frmttable using tab8.tex, tex statmat(B) sdec(3) substat(1) coljust(l;c;l;l) annotate(starsB) asymbol(*,**,***) ///
-ctitle("(2)"\"Difference in means"\"") merge		
+ctitle("(2)"\"Difference in"\"means") merge		
 frmttable using tab8.tex, tex statmat(C) sdec(3) substat(1) coljust(l;c;l;l) annotate(starsC) asymbol(*,**,***) ///
-ctitle("(2)"\"Difference in means"\"with lag") merge
+ctitle("(3)"\"Difference in"\"means with lag") merge
 frmttable using tab8.tex, tex statmat(D) sdec(3) substat(1) coljust(l;c;l;l) annotate(starsD) asymbol(*,**,***) ///
-ctitle("(3)"\"Difference-in-difference"\"") merge		
+ctitle("(4)"\"Difference-in"\"-difference") merge		
 frmttable using tab8.tex, tex statmat(E) sdec(3) substat(1) coljust(l;c;l;l) annotate(starsE) asymbol(*,**,***) ///
-ctitle("(4)"\"First-difference"\"") merge		
+ctitle("(5)"\"First-"\"difference") merge		
 
 
 
 
+* --------------------------------------------------------------
+**** Table 9: ITT Effects on Maize planting
+
+* first 3 variables are for all observations; last three are long.
+**************************************************************************************************
+
+capture drop xxvar xxvar2 line
+gen xxvar=""
+gen xxvar2=.
+gen line=_n
+
+format xxvar2 %9.2f
+	svyset vid [pweight=weightall], strata(blocks)
+	
+	svy: mean fertusemaize if post==0 & ls==1
+	matrix b=e(b)
+	local b=b[1,1]
+	replace xxvar2=int(`b'*1000+0.5)/1000 if line==1
+	replace xxvar=string(xxvar2) if line==1
+	estat sd
+	matrix sd=r(sd)
+	local sd=sd[1,1]
+	
+		* manually save baseline mean & sd
+		matrix Avg = r(mean)
+		matrix Sd = r(sd)
+			scalar fertusemaize_par_1 = Avg[1,1]
+			scalar fertusemaize_se_1 = Sd[1,1]
+		
+	replace xxvar2=int(`sd'*1000+0.5)/1000 if line==2
+	replace xxvar="["+string(xxvar2)+"]" if line==2
+
+	local run=2
+foreach var in 	acresmaize logqmaize {
+	svy: mean `var' if post==0 & ls==1
+	matrix b=e(b)
+	local b=b[1,1]
+	replace xxvar2=int(`b'*1000+0.5)/1000 if line==`run'+1
+	replace xxvar=string(xxvar2) if line==`run'+1
+	estat sd
+	matrix sd=r(sd)
+	local sd=sd[1,1]
+	
+		* manually save baseline mean & sd
+		matrix Avg = r(mean)
+		matrix Sd = r(sd)
+			scalar `var'_par_1 = Avg[1,1]
+			scalar `var'_se_1 = Sd[1,1]
+			
+	replace xxvar2=int(`sd'*1000+0.5)/1000 if line==`run'+2
+	replace xxvar="["+string(xxvar2)+"]" if line==`run'+2
+	local run=`run'+2
+	}
+
+	svyset vid [pweight=weightlong], strata(blocks)
+foreach var in anymaizesale logvalsale logvalmaizesale {
+	svy: mean `var' if post==0 & ss==1
+	matrix b=e(b)
+	local b=b[1,1]
+	replace xxvar2=int(`b'*1000+0.5)/1000 if line==`run'+1
+	replace xxvar=string(xxvar2) if line==`run'+1
+	estat sd
+	matrix sd=r(sd)
+	local sd=sd[1,1]
+		
+		* manually save baseline mean & sd
+		matrix Avg = r(mean)
+		matrix Sd = r(sd)
+			scalar `var'_par_1 = Avg[1,1]
+			scalar `var'_se_1 = Sd[1,1]
+			
+	replace xxvar2=int(`sd'*1000+0.5)/1000 if line==`run'+2
+	replace xxvar="["+string(xxvar2)+"]" if line==`run'+2
+	local run=`run'+2
+	}
+
+
+* first variable set
+gl tab9_1 fertusemaize acresmaize
+
+local listsize_1 : list sizeof global(tab9_1)
+tokenize $tab9_1
+
+forv i = 1/`listsize_1' {
+	quietly {
+	
+		* baseline mean
+			* -- calculated above
+
+		* difference in means
+		reg ``i'' treat i.blocks if post==1 & ls==1 [pweight=weightall], vce(cluster vid)
+			scalar ``i''_par_2 = _b[treat]
+			scalar ``i''_se_2 = _se[treat]
+			scalar df_2_`i' = `e(df_r)'
+		* difference in means w/ lag
+		* Create lag.
+				cap drop lag``i''
+				cap drop dif``i''
+				bys vid hhid (post): gen lag``i''=``i''[1]
+				gen dif``i''=``i''-lag``i''
+		qui reg ``i'' treat lag``i'' i.blocks if post==1 & ls==1 [pweight=weightall], vce(cluster vid)
+			scalar ``i''_par_3 = _b[treat]
+			scalar ``i''_se_3 = _se[treat]
+			scalar df_3_`i' = `e(df_r)'
+		* difference in difference
+		qui reg ``i'' treat treatXr3 post i.blocks if  ls==1 [pweight=weightall], vce(cluster vid)
+			scalar ``i''_par_4 = _b[treatXr3]
+			scalar ``i''_se_4 = _se[treatXr3]
+			scalar df_4_`i' = `e(df_r)'
+		* first difference
+		reg dif``i'' treat i.blocks if post==1 &  ls_fd==1 [pweight=weightall], vce(cluster vid)
+			scalar ``i''_par_5 = _b[treat]
+			scalar ``i''_se_5 = _se[treat]
+			scalar df_5_`i' = `e(df_r)'
+
+	* matrix for table
+		matrix mat_`i'_1 = (``i''_par_1,``i''_se_1)
+		matrix mat_`i'_2 = (``i''_par_2,``i''_se_2)
+		matrix mat_`i'_3 = (``i''_par_3,``i''_se_3)
+		matrix mat_`i'_4 = (``i''_par_4,``i''_se_4)
+		matrix mat_`i'_5 = (``i''_par_5,``i''_se_5)
+	}	
+}	
+
+matrix A = mat_1_1
+matrix B = mat_1_2
+matrix C = mat_1_3
+matrix D = mat_1_4
+matrix E = mat_1_5
+
+forv i = 2/`listsize_1' { // appends into single matrix
+	matrix A = A \ mat_`i'_1
+	matrix B = B \ mat_`i'_2
+	matrix C = C \ mat_`i'_3
+	matrix D = D \ mat_`i'_4
+	matrix E = E \ mat_`i'_5
+}
+
+* second variable set
+gl tab9_2 anymaizesale
+
+local listsize_2 : list sizeof global(tab9_2)
+tokenize $tab9_2
+
+forv i = 1/`listsize_2' {
+	quietly {
+	
+		* baseline mean
+			* -- calculated above
+
+		* difference in means
+		reg ``i'' treat i.blocks if post==1 & ls==1 [pweight=weightlong], vce(cluster vid)
+			scalar ``i''_par_2 = _b[treat]
+			scalar ``i''_se_2 = _se[treat]
+			scalar df_21_`i' = `e(df_r)'
+		* difference in means w/ lag
+		* Create lag.
+				cap drop lag``i''
+				cap drop dif``i''
+				bys vid hhid (post): gen lag``i''=``i''[1]
+				gen dif``i''=``i''-lag``i''
+		qui reg ``i'' treat lag``i'' i.blocks if post==1 & ls==1 [pweight=weightlong], vce(cluster vid)
+			scalar ``i''_par_3 = _b[treat]
+			scalar ``i''_se_3 = _se[treat]
+			scalar df_31_`i' = `e(df_r)'
+		* difference in difference
+		qui reg ``i'' treat treatXr3 post i.blocks if  ls==1 [pweight=weightlong], vce(cluster vid)
+			scalar ``i''_par_4 = _b[treatXr3]
+			scalar ``i''_se_4 = _se[treatXr3]
+			scalar df_41_`i' = `e(df_r)'
+		* first difference
+		reg dif``i'' treat i.blocks if post==1 &  ls_fd==1 [pweight=weightlong], vce(cluster vid)
+			scalar ``i''_par_5 = _b[treat]
+			scalar ``i''_se_5 = _se[treat]
+			scalar df_51_`i' = `e(df_r)'
+
+	* matrix for table
+		matrix mat_`i'_1 = (``i''_par_1,``i''_se_1)
+		matrix mat_`i'_2 = (``i''_par_2,``i''_se_2)
+		matrix mat_`i'_3 = (``i''_par_3,``i''_se_3)
+		matrix mat_`i'_4 = (``i''_par_4,``i''_se_4)
+		matrix mat_`i'_5 = (``i''_par_5,``i''_se_5)
+	}	
+}	
+
+matrix A1 = mat_1_1
+matrix B1 = mat_1_2
+matrix C1 = mat_1_3
+matrix D1 = mat_1_4
+matrix E1 = mat_1_5
+
+forv i = 2/`listsize_2' { // appends into single matrix
+	matrix A1 = A \ mat_`i'_1
+	matrix B1 = B \ mat_`i'_2
+	matrix C1 = C \ mat_`i'_3
+	matrix D1 = D \ mat_`i'_4
+	matrix E1 = E \ mat_`i'_5
+}
 
 
 
+* third variable set
+gl tab9_3 logct_qmaize 
+
+local listsize_3 : list sizeof global(tab9_3)
+tokenize $tab9_3
+
+forv i = 1/`listsize_3' {
+	quietly {
+	
+		* baseline mean
+			* -- calculated above
+
+		* difference in means
+		tobit ``i'' treat i.blocks if post==1 & ss==1 [pweight=weightall], vce(cluster vid) ll
+			scalar ``i''_par_2 = _b[treat]
+			scalar ``i''_se_2 = _se[treat]
+			scalar df_22_`i' = `e(df_r)'
+		
+	* matrix for table
+		matrix mat_`i'_1 = (logqmaize_par_1,logqmaize_se_1)
+		matrix mat_`i'_2 = (``i''_par_2,``i''_se_2)
+	}	
+}	
+
+matrix A2 = mat_1_1
+matrix B2 = mat_1_2
+
+forv i = 2/`listsize_3' { // appends into single matrix
+	matrix A2 = A2 \ mat_`i'_1
+	matrix B2 = B2 \ mat_`i'_2
+}
+
+
+* fourth variable set
+gl tab9_4 logct_valsale logct_valmaizesale
+
+local listsize_4 : list sizeof global(tab9_4)
+tokenize $tab9_4
+
+forv i = 1/`listsize_4' {
+	quietly {
+	
+		* baseline mean
+			* -- calculated above
+
+		* difference in means
+		tobit ``i'' treat i.blocks if post==1 & ss==1 [pweight=weightlong], vce(cluster vid) ll
+			scalar ``i''_par_2 = _b[treat]
+			scalar ``i''_se_2 = _se[treat]
+			scalar df_23_`i' = `e(df_r)'
+		
+	* matrix for table
+		matrix mat_1_1 = (logvalsale_par_1,logvalsale_se_1)
+		matrix mat_2_1 = (logvalmaizesale_par_1,logvalmaizesale_se_1)
+		matrix mat_`i'_2 = (``i''_par_2,``i''_se_2)
+	}	
+}	
+
+matrix A3 = mat_1_1
+matrix B3 = mat_1_2
+
+forv i = 2/`listsize_4' { // appends into single matrix
+	matrix A3 = A3 \ mat_`i'_1
+	matrix B3 = B3 \ mat_`i'_2
+}
 
 
 
+forv i = 1/3 { // appends into single matrix
+	matrix A = A \ A`i'
+	matrix B = B \ B`i'
+}	
+
+matrix C = C \ C1
+matrix D = D \ D1
+matrix E = E \ E1
+
+
+* add significance level stars
+gl mat A B C D E
+local mlistsize : list sizeof global(mat)
+tokenize $mat
+
+
+forv m = 2/`mlistsize' {
+matrix stars``m''=J(`listsize_1',2,0)
+		forvalues k = 1/`listsize_1'{
+			matrix stars``m''[`k',1] =   ///
+			(abs(``m''[`k',1]/``m''[`k',2]) > invttail(df_`m'_`k',0.1/2)) +  ///
+			(abs(``m''[`k',1]/``m''[`k',2]) > invttail(df_`m'_`k',0.05/2)) +  ///
+			(abs(``m''[`k',1]/``m''[`k',2]) > invttail(df_`m'_`k',0.01/2))
+		}
+}
+
+gl mat A1 B1 C1 D1 E1
+local mlistsize : list sizeof global(mat)
+tokenize $mat
+
+forv m = 2/`mlistsize' {
+matrix stars``m''=J(`listsize_2',2,0)
+		forvalues k = 1/`listsize_2'{
+			matrix stars``m''[`k',1] =   ///
+			(abs(``m''[`k',1]/``m''[`k',2]) > invttail(df_`m'1_`k',0.1/2)) +  ///
+			(abs(``m''[`k',1]/``m''[`k',2]) > invttail(df_`m'1_`k',0.05/2)) +  ///
+			(abs(``m''[`k',1]/``m''[`k',2]) > invttail(df_`m'1_`k',0.01/2))
+		}
+}
+
+foreach i in B C D E {
+	matrix stars`i' = stars`i' \ stars`i'1
+}
+
+
+gl mat A2 B2
+local mlistsize : list sizeof global(mat)
+tokenize $mat
+
+forv m = 2/`mlistsize' {
+matrix stars``m''=J(`listsize_3',2,0)
+		forvalues k = 1/`listsize_3'{
+			matrix stars``m''[`k',1] =   ///
+			(abs(``m''[`k',1]/``m''[`k',2]) > invttail(df_`m'2_`k',0.1/2)) +  ///
+			(abs(``m''[`k',1]/``m''[`k',2]) > invttail(df_`m'2_`k',0.05/2)) +  ///
+			(abs(``m''[`k',1]/``m''[`k',2]) > invttail(df_`m'2_`k',0.01/2))
+		}
+}
+
+	matrix starsB = starsB \ starsB2
+
+	
+gl mat A3 B3
+local mlistsize : list sizeof global(mat)
+tokenize $mat
+
+forv m = 2/`mlistsize' {
+matrix stars``m''=J(`listsize_4',2,0)
+		forvalues k = 1/`listsize_4'{
+			matrix stars``m''[`k',1] =   ///
+			(abs(``m''[`k',1]/``m''[`k',2]) > invttail(df_`m'3_`k',0.1/2)) +  ///
+			(abs(``m''[`k',1]/``m''[`k',2]) > invttail(df_`m'3_`k',0.05/2)) +  ///
+			(abs(``m''[`k',1]/``m''[`k',2]) > invttail(df_`m'3_`k',0.01/2))
+		}
+}
+
+matrix starsB = starsB \ starsB3
+
+
+
+* Table
+frmttable using tab9.tex, tex statmat(A) sdec(3) substat(1) coljust(l;c;l;l)  ///
+title("Table 8 - ITT effects on credit outcomes") ///
+ctitle("","(1)"\"Outcome","Baseline mean") ///
+rtitle("Household uses any fertilizer on maize"\""\"Area with maize (acres)"\""\ ///
+		"Household sold any maize"\""\ ///
+		"Quantity of maize harvested (kg, log)^{a}"\""\"Value of agricultural sale (MK, log)^{a}"\""\ ///
+		"Value of maize sale (MK, log)^{a}"\"") replace
+frmttable using tab9.tex, tex statmat(B) sdec(3) substat(1) coljust(l;c;l;l) annotate(starsB) asymbol(*,**,***)   ///
+ctitle("(2)"\"Difference in"\"means") merge		
+frmttable using tab9.tex, tex statmat(C) sdec(3) substat(1) coljust(l;c;l;l) annotate(starsC) asymbol(*,**,***)  ///
+ctitle("(2)"\"Difference in"\"means with lag") merge
+frmttable using tab9.tex, tex statmat(D) sdec(3) substat(1) coljust(l;c;l;l) annotate(starsD) asymbol(*,**,***)  ///
+ctitle("(3)"\"Difference-in"\"-difference") merge		
+frmttable using tab9.tex, tex statmat(E) sdec(3) substat(1) coljust(l;c;l;l) annotate(starsE) asymbol(*,**,***)   ///
+ctitle("(4)"\"First-"\"difference") merge	
 
 
 
