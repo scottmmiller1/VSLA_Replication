@@ -755,114 +755,7 @@ frmttable using tab8.tex, tex statmat(E) sdec(3) substat(1) coljust(l;c;l;l) ann
 ctitle("(5)"\"First-"\"difference") merge		
 
 
-*******************************
-* Table 9. ITT Effects on Maize Planting Practice and Outcomes
-* first 3 variables are for all observations; last three are long.
-**************************************************************************************************
 
-* How to do this: loop and replace manually
-
-capture drop xxvar xxvar2 line
-gen xxvar=""
-gen xxvar2=.
-gen line=_n
-
-format xxvar2 %9.2f
-	svyset vid [pweight=weightall], strata(blocks)
-	
-	svy: mean fertusemaize if post==0 & ls==1
-	matrix b=e(b)
-	local b=b[1,1]
-	replace xxvar2=int(`b'*1000+0.5)/1000 if line==1
-	replace xxvar=string(xxvar2) if line==1
-	estat sd
-	matrix sd=r(sd)
-	local sd=sd[1,1]
-	replace xxvar2=int(`sd'*1000+0.5)/1000 if line==2
-	replace xxvar="["+string(xxvar2)+"]" if line==2
-
-	local run=2
-foreach var in 	acresmaize logqmaize {
-	svy: mean `var' if post==0 & ls==1
-	matrix b=e(b)
-	local b=b[1,1]
-	replace xxvar2=int(`b'*1000+0.5)/1000 if line==`run'+1
-	replace xxvar=string(xxvar2) if line==`run'+1
-	estat sd
-	matrix sd=r(sd)
-	local sd=sd[1,1]
-	replace xxvar2=int(`sd'*1000+0.5)/1000 if line==`run'+2
-	replace xxvar="["+string(xxvar2)+"]" if line==`run'+2
-	local run=`run'+2
-	}
-
-	svyset vid [pweight=weightlong], strata(blocks)
-foreach var in anymaizesale logvalsale logvalmaizesale {
-	svy: mean `var' if post==0 & ss==1
-	matrix b=e(b)
-	local b=b[1,1]
-	replace xxvar2=int(`b'*1000+0.5)/1000 if line==`run'+1
-	replace xxvar=string(xxvar2) if line==`run'+1
-	estat sd
-	matrix sd=r(sd)
-	local sd=sd[1,1]
-	replace xxvar2=int(`sd'*1000+0.5)/1000 if line==`run'+2
-	replace xxvar="["+string(xxvar2)+"]" if line==`run'+2
-	local run=`run'+2
-	}
-
-
-		eststo DiM: qui reg fertusemaize treat i.blocks if post==1 & ls==1 [pweight=weightall], vce(cluster vid)
-			outreg2 [Di*] using "$outreg\Table9", excel replace ctitle("initial")
-
-	
-foreach var in fertusemaize acresmaize {
-eststo clear
-			eststo DiM: qui reg `var' treat i.blocks if post==1 & ls==1 [pweight=weightall], vce(cluster vid)
-				* Create lag.
-				cap drop lag`var'
-				cap drop dif`var'
-				bys hhidnum (post): gen lag`var'=`var'[1]
-				gen dif`var'=`var'-lag`var'
-			eststo DiMLag: qui reg `var' treat lag`var' i.blocks if post==1 & ls==1 [pweight=weightall], vce(cluster vid)
-			eststo DiD: qui reg `var' treat treatXr3 post i.blocks if  ls==1 [pweight=weightall], vce(cluster vid)
-			eststo DiFE: qui reg dif`var' treat i.blocks if post==1 &  ls_fd==1 [pweight=weightall], vce(cluster vid)
-			esttab, starlevels(* 0.1 ** 0.05 *** 0.01 ) b(%8.3f) se(%8.2f)  stat( N chi2) drop(*block*)
-			outreg2 [Di*] using "$outreg\Table9", excel append  bdec(3) bfmt(f) sdec(2) sfmt(f)
-			}
-
-foreach var in anymaizesale {
-eststo clear
-			eststo DiM: qui reg `var' treat i.blocks if post==1 & ls==1 [pweight=weightlong], vce(cluster vid)
-				* Create lag.
-				cap drop lag`var'
-				cap drop dif`var'
-				bys hhidnum (post): gen lag`var'=`var'[1]
-				gen dif`var'=`var'-lag`var'
-			eststo DiMLag: qui reg `var' treat lag`var' i.blocks if post==1 & ls==1 [pweight=weightlong], vce(cluster vid)
-			eststo DiD: qui reg `var' treat treatXr3 post i.blocks if  ls==1 [pweight=weightlong], vce(cluster vid)
-			eststo DiFE: qui reg dif`var' treat i.blocks if post==1 &  ls_fd==1 [pweight=weightlong], vce(cluster vid)
-			esttab, starlevels(* 0.1 ** 0.05 *** 0.01 ) b(%8.3f) se(%8.2f)  stat( N chi2) drop(*block*)
-			outreg2 [Di*] using "$outreg\Table9", excel append  bdec(3) bfmt(f) sdec(2) sfmt(f)
-			}
-			
-			
-eststo clear
-		foreach var in logct_qmaize {
-			eststo DiffIn`var': tobit `var' treat i.blocks if post==1 & ss==1 [pweight=weightall], vce(cluster vid) ll
-	}
-				esttab, starlevels(* 0.1 ** 0.05 *** 0.01 ) b(%8.3f) se(%8.2f) stat( N chi2) drop(*block*)
-			outreg2 [Diff*] using "$outreg\Table9", excel append  bdec(3) bfmt(f) sdec(2) sfmt(f)
-			
-eststo clear
-		foreach var in logct_valsale logct_valmaizesale {
-			eststo DiffIn`var': tobit `var' treat i.blocks if post==1 & ss==1 [pweight=weightlong], vce(cluster vid) ll
-	}
-				esttab, starlevels(* 0.1 ** 0.05 *** 0.01 ) b(%8.3f) se(%8.2f) stat( N chi2) drop(*block*)
-			outreg2 [Diff*] using "$outreg\Table9", excel append  bdec(3) bfmt(f) sdec(2) sfmt(f)
-
-				
-**************************************************************************************************
 
 * --------------------------------------------------------------
 **** Table 9: ITT Effects on Maize planting
@@ -1215,7 +1108,7 @@ matrix starsB = starsB \ starsB3
 
 * Table
 frmttable using tab9.tex, tex statmat(A) sdec(3) substat(1) coljust(l;c;l;l)  ///
-title("Table 8 - ITT effects on credit outcomes") ///
+title("Table 9 - ITT effects on Maize planting") ///
 ctitle("","(1)"\"Outcome","Baseline mean") ///
 rtitle("Household uses any fertilizer on maize"\""\"Area with maize (acres)"\""\ ///
 		"Household sold any maize"\""\ ///
@@ -1233,13 +1126,189 @@ ctitle("(4)"\"First-"\"difference") merge
 
 
 
+* --------------------------------------------------------------
+* Table 10. Effects on Small Business Outcomes
+* Panel A
+	svyset vid [pweight=weightlong], strata(blocks)
+	
+	svy: mean busnum businc2 if post==0 & ss==1
+	estat sd
+
+foreach var in busnum businc2 {
+eststo clear
+			eststo DiM: qui reg `var' treat i.blocks if post==1 & ss==1 [pweight=weightlong], vce(cluster vid)
+				* Create lag.
+				cap drop lag`var'
+				cap drop dif`var'
+				bys hhidnum (post): gen lag`var'=`var'[1]
+				gen dif`var'=`var'-lag`var'
+			eststo DiMLag: qui reg `var' treat lag`var' i.blocks if post==1 & ls==1 [pweight=weightlong], vce(cluster vid)
+			esttab, starlevels(* 0.1 ** 0.05 *** 0.01 ) se(%8.3f) stat( N chi2) drop(*block*)
+			}
+
+* Panel B: See separate do-file. This was done on a separate computer as qreg with weights only works with STATA 13.
+
+
+* --------------------------------------------------------------
+* Table 10. Effects on Small Business Outcomes - latex table code
+
+* Panel A - OLS regressions
+gl tab10_1 busnum businc2
+
+local listsize_1 : list sizeof global(tab10_1)
+tokenize $tab10_1
+
+forv i = 1/`listsize_1' {
+	quietly {
+		* baseline mean
+		svyset vid [pweight=weightlong], strata(blocks)
+			svy: mean ``i'' if post==0 & ss==1
+			estat sd
+				matrix Avg = r(mean)
+				matrix Sd = r(sd)
+					scalar ``i''_par_1 = Avg[1,1]
+					scalar ``i''_se_1 = Sd[1,1]
+		* difference in means
+		reg ``i'' treat i.blocks if post==1 & ss==1 [pweight=weightlong], vce(cluster vid)
+			scalar ``i''_par_2 = _b[treat]
+			scalar ``i''_se_2 = _se[treat]
+			scalar df_2_`i' = `e(df_r)'
+		* difference in means with lag
+		* Create lag.
+				cap drop lag``i''
+				cap drop dif``i''
+				bys hhidnum (post): gen lag``i''=``i''[1]
+				gen dif``i''=``i''-lag``i''
+		reg ``i'' treat lag``i'' i.blocks if post==1 & ls==1 [pweight=weightlong], vce(cluster vid)
+			scalar ``i''_par_3 = _b[treat]
+			scalar ``i''_se_3 = _se[treat]
+			scalar df_3_`i' = `e(df_r)'
+			* matrix for table
+		matrix mat_`i'_1 = (``i''_par_1,``i''_se_1)
+		matrix mat_`i'_2 = (``i''_par_2,``i''_se_2)
+		matrix mat_`i'_3 = (``i''_par_3,``i''_se_3)	
+	}
+}	
+
+matrix A = mat_1_1
+matrix B = mat_1_2
+matrix C = mat_1_3
+
+forv i = 2/`listsize_1' { // appends into single matrix
+	matrix A = A \ mat_`i'_1
+	matrix B = B \ mat_`i'_2
+	matrix C = C \ mat_`i'_3
+}
+
+
+** Panel B - quantile regressions
+
+	* ------------------------------------------------------------
+	use "$d1/impact_replication_final.dta", clear
+	
+	version 12.1
+	
+	global reps 1599
+	
+	bys vid hhid (post): gen basebusinc2=businc2[1]
+
+	*bys vid hhid (post): gen lagbusnum=busnum[1] if _n==2
+
+	bys vid hhid post: assert _n==1
+
+	keep if ss==1
+	keep if post==1
+
+	xtset, clear
+	keep vid hhid businc2 treat baseanybus blocks weightlong basebusinc2 post
+	* ------------------------------------------------------------
+
+* All respondents
+
+gl tab10_2 businc2
+local listsize_2 : list sizeof global(tab10_2)
+tokenize $tab10_2
+
+
+local quant 0.25 0.50 0.75
+foreach q in local quant {
+	
+* 25th percentile	
+	* baseline percentiles
+		*** authors do not provide code for calculating baseline percentiles
+	
+	* difference in means
+	capture program drop bootitDiM_W
+					program define bootitDiM_W
+						xi: qreg businc2 treat baseanybus i.blocks if post==1 [pweight=weightlong], quantile(`q')
+					end
+					*bootitDiM_W
+	sort vid hhid
+	set seed 02092015				
+	bootstrap _b, cluster(vid) strata(blocks) reps($reps): bootitDiM_W 
+		scalar businc2_par_2_`q' = _b[treat]
+		scalar businc2_se_2_`q' = _se[treat]
+		*scalar df_21_`i' = `e(df_r)'
+
+	* difference in means with lag
+	capture program drop bootitDiMLag_W
+					program define bootitDiMLag_W
+						xi: qreg businc2 treat basebusinc2 baseanybus i.blocks if post==1 [pweight=weightlong], quantile(`q')
+					end
+					*bootitDiMLag_W
+	sort vid hhid
+	set seed 02092015				
+	bootstrap _b, cluster(vid) strata(blocks) reps($reps): bootitDiMLag_W 
+		scalar businc2_par_3_`q' = _b[treat]
+		scalar businc2_se_3_`q' = _se[treat]
+		*scalar df_31_`i' = `e(df_r)'
+	
+
+			* matrix for table
+		*matrix mat_`i'_1 = (``i''_par_1,``i''_se_1)
+		matrix mat_1_2_`q' = (businc2_par_2_25,businc2_se_2_`q')
+		matrix mat_1_3_`q' = (businc2_par_3_25,businc2_se_3_`q')			
+	
+}	
+
+*matrix A1 = mat_1_1
+matrix B1 = mat_1_2_25
+matrix C1 = mat_1_3_25
+
+foreach q in numlist 25 50 75 { // appends into single matrix
+	*matrix A = A \ mat_`i'_1
+	matrix B1 = B1 \ mat_1_2_`q'
+	matrix C1 = C1 \ mat_1_3_`q'
 
 
 
+
+
+* update matrices to fit table
+matrix A0 = (.,.)
+matrix B0 = (.,.)
+matrix C0 = (.,.)
+
+matrix A = A0 \ A \ A0
+matrix B = B0 \ B \ B0
+matrix C = C0 \ C \ C0
+ 
 	
 	
-	
-	
-	
-	
+* Table
+frmttable using tab10.tex, tex statmat(A) sdec(3) substat(1) coljust(l;c;l;l)  ///
+title("Table 10 - Effects on small business outcomes") ///
+ctitle("Outcomes","","Baseline"\ ///
+		"","","mean") ///
+rtitle("OLS regressions",""\"",""\ ///
+		"Number of businesses (excluding agriculture and livestock)",""\"",""\ ///
+		"Total income from all businesses (MWK)",""\"",""\ ///
+		"Quantile regressions"\""\ ///
+		"","25th"\"",""\"","50th"\"",""\"Business income all respondents","75th"\"",""\ ///
+		"","25th"\"",""\"","50th"\"",""\"Business income respondents with business at baseline","75th"\"",""\ ///
+		"","25th"\"",""\"","50th"\"",""\"Business income respondents without business at baseline","75th") replace	
+frmttable using tab10.tex, tex statmat(B) sdec(3) substat(1) coljust(l;c;l;l) annotate(starsB) asymbol(*,**,***)   ///
+ctitle("Difference in"\"means") merge		
+frmttable using tab10.tex, tex statmat(C) sdec(3) substat(1) coljust(l;c;l;l) annotate(starsB) asymbol(*,**,***)   ///
+ctitle("Difference in"\"means with lag") merge		
 	
