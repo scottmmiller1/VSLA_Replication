@@ -949,11 +949,11 @@ matrix D1 = mat_1_4
 matrix E1 = mat_1_5
 
 forv i = 2/`listsize_2' { // appends into single matrix
-	matrix A1 = A \ mat_`i'_1
-	matrix B1 = B \ mat_`i'_2
-	matrix C1 = C \ mat_`i'_3
-	matrix D1 = D \ mat_`i'_4
-	matrix E1 = E \ mat_`i'_5
+	matrix A1 = A1 \ mat_`i'_1
+	matrix B1 = B1 \ mat_`i'_2
+	matrix C1 = C1 \ mat_`i'_3
+	matrix D1 = D1 \ mat_`i'_4
+	matrix E1 = E1 \ mat_`i'_5
 }
 
 
@@ -1223,15 +1223,8 @@ forv i = 2/`listsize_1' { // appends into single matrix
 	keep vid hhid businc2 treat baseanybus blocks weightlong basebusinc2 post
 	* ------------------------------------------------------------
 
-* All respondents
-
-gl tab10_2 businc2
-local listsize_2 : list sizeof global(tab10_2)
-tokenize $tab10_2
-
-
-local quant 0.25 0.50 0.75
-foreach q in local quant {
+	
+******************* All respondents 
 	
 * 25th percentile	
 	* baseline percentiles
@@ -1240,45 +1233,376 @@ foreach q in local quant {
 	* difference in means
 	capture program drop bootitDiM_W
 					program define bootitDiM_W
-						xi: qreg businc2 treat baseanybus i.blocks if post==1 [pweight=weightlong], quantile(`q')
+						xi: qreg businc2 treat baseanybus i.blocks if post==1 [pweight=weightlong], quantile(0.25)
 					end
 					*bootitDiM_W
 	sort vid hhid
 	set seed 02092015				
 	bootstrap _b, cluster(vid) strata(blocks) reps($reps): bootitDiM_W 
-		scalar businc2_par_2_`q' = _b[treat]
-		scalar businc2_se_2_`q' = _se[treat]
+		scalar businc2_par_2_25 = _b[treat]
+		scalar businc2_se_2_25 = _se[treat]
 		*scalar df_21_`i' = `e(df_r)'
 
 	* difference in means with lag
 	capture program drop bootitDiMLag_W
 					program define bootitDiMLag_W
-						xi: qreg businc2 treat basebusinc2 baseanybus i.blocks if post==1 [pweight=weightlong], quantile(`q')
+						xi: qreg businc2 treat basebusinc2 baseanybus i.blocks if post==1 [pweight=weightlong], quantile(0.25)
 					end
 					*bootitDiMLag_W
 	sort vid hhid
 	set seed 02092015				
 	bootstrap _b, cluster(vid) strata(blocks) reps($reps): bootitDiMLag_W 
-		scalar businc2_par_3_`q' = _b[treat]
-		scalar businc2_se_3_`q' = _se[treat]
+		scalar businc2_par_3_25 = _b[treat]
+		scalar businc2_se_3_25 = _se[treat]
 		*scalar df_31_`i' = `e(df_r)'
 	
 
 			* matrix for table
 		*matrix mat_`i'_1 = (``i''_par_1,``i''_se_1)
-		matrix mat_1_2_`q' = (businc2_par_2_25,businc2_se_2_`q')
-		matrix mat_1_3_`q' = (businc2_par_3_25,businc2_se_3_`q')			
+		matrix mat_1_2_25 = (businc2_par_2_25,businc2_se_2_25)
+		matrix mat_1_3_25 = (businc2_par_3_25,businc2_se_3_25)			
 	
-}	
+* 50th percentile	
+	* baseline percentiles
+		*** authors do not provide code for calculating baseline percentiles
+	
+	* difference in means
+	capture program drop bootitDiM_W
+					program define bootitDiM_W
+						xi: qreg businc2 treat baseanybus i.blocks if post==1 [pweight=weightlong], quantile(0.50)
+					end
+					*bootitDiM_W
+	sort vid hhid
+	set seed 02092015				
+	bootstrap _b, cluster(vid) strata(blocks) reps($reps): bootitDiM_W 
+		scalar businc2_par_2_50 = _b[treat]
+		scalar businc2_se_2_50 = _se[treat]
+		*scalar df_21_`i' = `e(df_r)'
 
+	* difference in means with lag
+	capture program drop bootitDiMLag_W
+					program define bootitDiMLag_W
+						xi: qreg businc2 treat basebusinc2 baseanybus i.blocks if post==1 [pweight=weightlong], quantile(0.50)
+					end
+					*bootitDiMLag_W
+	sort vid hhid
+	set seed 02092015				
+	bootstrap _b, cluster(vid) strata(blocks) reps($reps): bootitDiMLag_W 
+		scalar businc2_par_3_50 = _b[treat]
+		scalar businc2_se_3_50 = _se[treat]
+		*scalar df_31_`i' = `e(df_r)'
+	
+
+			* matrix for table
+		*matrix mat_`i'_1 = (``i''_par_1,``i''_se_1)
+		matrix mat_1_2_50 = (businc2_par_2_50,businc2_se_2_50)
+		matrix mat_1_3_50 = (businc2_par_3_50,businc2_se_3_50)	
+
+* 75th percentile	
+	* baseline percentiles
+		*** authors do not provide code for calculating baseline percentiles
+	
+	* difference in means
+	capture program drop bootitDiM_W
+					program define bootitDiM_W
+						xi: qreg businc2 treat baseanybus i.blocks if post==1 [pweight=weightlong], quantile(0.75)
+					end
+					*bootitDiM_W
+	sort vid hhid
+	set seed 02092015				
+	bootstrap _b, cluster(vid) strata(blocks) reps($reps): bootitDiM_W 
+		scalar businc2_par_2_75 = _b[treat]
+		scalar businc2_se_2_75 = _se[treat]
+		*scalar df_21_`i' = `e(df_r)'
+
+	* difference in means with lag
+	capture program drop bootitDiMLag_W
+					program define bootitDiMLag_W
+						xi: qreg businc2 treat basebusinc2 baseanybus i.blocks if post==1 [pweight=weightlong], quantile(0.75)
+					end
+					*bootitDiMLag_W
+	sort vid hhid
+	set seed 02092015				
+	bootstrap _b, cluster(vid) strata(blocks) reps($reps): bootitDiMLag_W 
+		scalar businc2_par_3_75 = _b[treat]
+		scalar businc2_se_3_75 = _se[treat]
+		*scalar df_31_`i' = `e(df_r)'
+	
+
+			* matrix for table
+		*matrix mat_`i'_1 = (``i''_par_1,``i''_se_1)
+		matrix mat_1_2_75 = (businc2_par_2_75,businc2_se_2_75)
+		matrix mat_1_3_75 = (businc2_par_3_75,businc2_se_3_75)	
+		
+
+	
+	
 *matrix A1 = mat_1_1
 matrix B1 = mat_1_2_25
 matrix C1 = mat_1_3_25
 
-foreach q in numlist 25 50 75 { // appends into single matrix
+foreach q of numlist 50 75 { // appends into single matrix
 	*matrix A = A \ mat_`i'_1
 	matrix B1 = B1 \ mat_1_2_`q'
 	matrix C1 = C1 \ mat_1_3_`q'
+}
+
+tempfile tempall
+save `tempall'
+
+*******************  Business owners at baseline
+
+use `tempall', clear
+keep if baseanybus==1
+	
+* 25th percentile	
+	* baseline percentiles
+		*** authors do not provide code for calculating baseline percentiles
+	
+	* difference in means
+	capture program drop bootitDiM_W
+					program define bootitDiM_W
+						xi: qreg businc2 treat baseanybus i.blocks if post==1 [pweight=weightlong], quantile(0.25)
+					end
+					*bootitDiM_W
+	sort vid hhid
+	set seed 02092015				
+	bootstrap _b, cluster(vid) strata(blocks) reps($reps): bootitDiM_W 
+		scalar businc20_par_2_25 = _b[treat]
+		scalar businc20_se_2_25 = _se[treat]
+		*scalar df_21_`i' = `e(df_r)'
+
+	* difference in means with lag
+	capture program drop bootitDiMLag_W
+					program define bootitDiMLag_W
+						xi: qreg businc2 treat basebusinc2 baseanybus i.blocks if post==1 [pweight=weightlong], quantile(0.25)
+					end
+					*bootitDiMLag_W
+	sort vid hhid
+	set seed 02092015				
+	bootstrap _b, cluster(vid) strata(blocks) reps($reps): bootitDiMLag_W 
+		scalar businc20_par_3_25 = _b[treat]
+		scalar businc20_se_3_25 = _se[treat]
+		*scalar df_31_`i' = `e(df_r)'
+	
+
+			* matrix for table
+		*matrix mat_`i'_1 = (``i''_par_1,``i''_se_1)
+		matrix mat_10_2_25 = (businc20_par_2_25,businc20_se_2_25)
+		matrix mat_10_3_25 = (businc20_par_3_25,businc20_se_3_25)			
+	
+* 50th percentile	
+	* baseline percentiles
+		*** authors do not provide code for calculating baseline percentiles
+	
+	* difference in means
+	capture program drop bootitDiM_W
+					program define bootitDiM_W
+						xi: qreg businc2 treat baseanybus i.blocks if post==1 [pweight=weightlong], quantile(0.50)
+					end
+					*bootitDiM_W
+	sort vid hhid
+	set seed 02092015				
+	bootstrap _b, cluster(vid) strata(blocks) reps($reps): bootitDiM_W 
+		scalar businc20_par_2_50 = _b[treat]
+		scalar businc20_se_2_50 = _se[treat]
+		*scalar df_21_`i' = `e(df_r)'
+
+	* difference in means with lag
+	capture program drop bootitDiMLag_W
+					program define bootitDiMLag_W
+						xi: qreg businc2 treat basebusinc2 baseanybus i.blocks if post==1 [pweight=weightlong], quantile(0.50)
+					end
+					*bootitDiMLag_W
+	sort vid hhid
+	set seed 02092015				
+	bootstrap _b, cluster(vid) strata(blocks) reps($reps): bootitDiMLag_W 
+		scalar businc20_par_3_50 = _b[treat]
+		scalar businc20_se_3_50 = _se[treat]
+		*scalar df_31_`i' = `e(df_r)'
+	
+
+			* matrix for table
+		*matrix mat_`i'_1 = (``i''_par_1,``i''_se_1)
+		matrix mat_10_2_50 = (businc20_par_2_50,businc20_se_2_50)
+		matrix mat_10_3_50 = (businc20_par_3_50,businc20_se_3_50)	
+
+* 75th percentile	
+	* baseline percentiles
+		*** authors do not provide code for calculating baseline percentiles
+	
+	* difference in means
+	capture program drop bootitDiM_W
+					program define bootitDiM_W
+						xi: qreg businc2 treat baseanybus i.blocks if post==1 [pweight=weightlong], quantile(0.75)
+					end
+					*bootitDiM_W
+	sort vid hhid
+	set seed 02092015				
+	bootstrap _b, cluster(vid) strata(blocks) reps($reps): bootitDiM_W 
+		scalar businc20_par_2_75 = _b[treat]
+		scalar businc20_se_2_75 = _se[treat]
+		*scalar df_21_`i' = `e(df_r)'
+
+	* difference in means with lag
+	capture program drop bootitDiMLag_W
+					program define bootitDiMLag_W
+						xi: qreg businc2 treat basebusinc2 baseanybus i.blocks if post==1 [pweight=weightlong], quantile(0.75)
+					end
+					*bootitDiMLag_W
+	sort vid hhid
+	set seed 02092015				
+	bootstrap _b, cluster(vid) strata(blocks) reps($reps): bootitDiMLag_W 
+		scalar businc20_par_3_75 = _b[treat]
+		scalar businc20_se_3_75 = _se[treat]
+		*scalar df_31_`i' = `e(df_r)'
+	
+
+			* matrix for table
+		*matrix mat_`i'_1 = (``i''_par_1,``i''_se_1)
+		matrix mat_10_2_75 = (businc20_par_2_75,businc20_se_2_75)
+		matrix mat_10_3_75 = (businc20_par_3_75,businc20_se_3_75)	
+		
+
+	
+	
+*matrix A1 = mat_1_1
+matrix B2 = mat_10_2_25
+matrix C2 = mat_10_3_25
+
+foreach q of numlist 50 75 { // appends into single matrix
+	*matrix A = A \ mat_`i'_1
+	matrix B2 = B2 \ mat_10_2_`q'
+	matrix C2 = C2 \ mat_10_3_`q'
+}
+
+
+
+*******************  Non-usiness owners at baseline
+
+use `tempall', clear
+keep if baseanybus==0
+	
+* 25th percentile	
+	* baseline percentiles
+		*** authors do not provide code for calculating baseline percentiles
+	
+	* difference in means
+	capture program drop bootitDiM_W
+					program define bootitDiM_W
+						xi: qreg businc2 treat baseanybus i.blocks if post==1 [pweight=weightlong], quantile(0.25)
+					end
+					*bootitDiM_W
+	sort vid hhid
+	set seed 02092015				
+	bootstrap _b, cluster(vid) strata(blocks) reps($reps): bootitDiM_W 
+		scalar businc20_par_2_25 = _b[treat]
+		scalar businc20_se_2_25 = _se[treat]
+		*scalar df_21_`i' = `e(df_r)'
+
+	* difference in means with lag
+	capture program drop bootitDiMLag_W
+					program define bootitDiMLag_W
+						xi: qreg businc2 treat basebusinc2 baseanybus i.blocks if post==1 [pweight=weightlong], quantile(0.25)
+					end
+					*bootitDiMLag_W
+	sort vid hhid
+	set seed 02092015				
+	bootstrap _b, cluster(vid) strata(blocks) reps($reps): bootitDiMLag_W 
+		scalar businc20_par_3_25 = _b[treat]
+		scalar businc20_se_3_25 = _se[treat]
+		*scalar df_31_`i' = `e(df_r)'
+	
+
+			* matrix for table
+		*matrix mat_`i'_1 = (``i''_par_1,``i''_se_1)
+		matrix mat_10_2_25 = (businc20_par_2_25,businc20_se_2_25)
+		matrix mat_10_3_25 = (businc20_par_3_25,businc20_se_3_25)			
+	
+* 50th percentile	
+	* baseline percentiles
+		*** authors do not provide code for calculating baseline percentiles
+	
+	* difference in means
+	capture program drop bootitDiM_W
+					program define bootitDiM_W
+						xi: qreg businc2 treat baseanybus i.blocks if post==1 [pweight=weightlong], quantile(0.50)
+					end
+					*bootitDiM_W
+	sort vid hhid
+	set seed 02092015				
+	bootstrap _b, cluster(vid) strata(blocks) reps($reps): bootitDiM_W 
+		scalar businc20_par_2_50 = _b[treat]
+		scalar businc20_se_2_50 = _se[treat]
+		*scalar df_21_`i' = `e(df_r)'
+
+	* difference in means with lag
+	capture program drop bootitDiMLag_W
+					program define bootitDiMLag_W
+						xi: qreg businc2 treat basebusinc2 baseanybus i.blocks if post==1 [pweight=weightlong], quantile(0.50)
+					end
+					*bootitDiMLag_W
+	sort vid hhid
+	set seed 02092015				
+	bootstrap _b, cluster(vid) strata(blocks) reps($reps): bootitDiMLag_W 
+		scalar businc20_par_3_50 = _b[treat]
+		scalar businc20_se_3_50 = _se[treat]
+		*scalar df_31_`i' = `e(df_r)'
+	
+
+			* matrix for table
+		*matrix mat_`i'_1 = (``i''_par_1,``i''_se_1)
+		matrix mat_10_2_50 = (businc20_par_2_50,businc20_se_2_50)
+		matrix mat_10_3_50 = (businc20_par_3_50,businc20_se_3_50)	
+
+* 75th percentile	
+	* baseline percentiles
+		*** authors do not provide code for calculating baseline percentiles
+	
+	* difference in means
+	capture program drop bootitDiM_W
+					program define bootitDiM_W
+						xi: qreg businc2 treat baseanybus i.blocks if post==1 [pweight=weightlong], quantile(0.75)
+					end
+					*bootitDiM_W
+	sort vid hhid
+	set seed 02092015				
+	bootstrap _b, cluster(vid) strata(blocks) reps($reps): bootitDiM_W 
+		scalar businc20_par_2_75 = _b[treat]
+		scalar businc20_se_2_75 = _se[treat]
+		*scalar df_21_`i' = `e(df_r)'
+
+	* difference in means with lag
+	capture program drop bootitDiMLag_W
+					program define bootitDiMLag_W
+						xi: qreg businc2 treat basebusinc2 baseanybus i.blocks if post==1 [pweight=weightlong], quantile(0.75)
+					end
+					*bootitDiMLag_W
+	sort vid hhid
+	set seed 02092015				
+	bootstrap _b, cluster(vid) strata(blocks) reps($reps): bootitDiMLag_W 
+		scalar businc20_par_3_75 = _b[treat]
+		scalar businc20_se_3_75 = _se[treat]
+		*scalar df_31_`i' = `e(df_r)'
+	
+
+			* matrix for table
+		*matrix mat_`i'_1 = (``i''_par_1,``i''_se_1)
+		matrix mat_10_2_75 = (businc20_par_2_75,businc20_se_2_75)
+		matrix mat_10_3_75 = (businc20_par_3_75,businc20_se_3_75)	
+		
+
+	
+	
+*matrix A1 = mat_1_1
+matrix B3 = mat_10_2_25
+matrix C3 = mat_10_3_25
+
+foreach q of numlist 50 75 { // appends into single matrix
+	*matrix A = A \ mat_`i'_1
+	matrix B3 = B3 \ mat_10_2_`q'
+	matrix C3 = C3 \ mat_10_3_`q'
+}
 
 
 
@@ -1289,14 +1613,14 @@ matrix A0 = (.,.)
 matrix B0 = (.,.)
 matrix C0 = (.,.)
 
-matrix A = A0 \ A \ A0
-matrix B = B0 \ B \ B0
-matrix C = C0 \ C \ C0
+matrix At = A0 \ A \ A0
+matrix Bt = B0 \ B \ B0 \ B1 \ B2 \ B3
+matrix Ct = C0 \ C \ C0 \ C1 \ C2 \ C3
  
 	
 	
 * Table
-frmttable using tab10.tex, tex statmat(A) sdec(3) substat(1) coljust(l;c;l;l)  ///
+frmttable using tab10.tex, tex statmat(At) sdec(2) substat(1) coljust(l;c;l;l)  ///
 title("Table 10 - Effects on small business outcomes") ///
 ctitle("Outcomes","","Baseline"\ ///
 		"","","mean") ///
@@ -1306,9 +1630,9 @@ rtitle("OLS regressions",""\"",""\ ///
 		"Quantile regressions"\""\ ///
 		"","25th"\"",""\"","50th"\"",""\"Business income all respondents","75th"\"",""\ ///
 		"","25th"\"",""\"","50th"\"",""\"Business income respondents with business at baseline","75th"\"",""\ ///
-		"","25th"\"",""\"","50th"\"",""\"Business income respondents without business at baseline","75th") replace	
-frmttable using tab10.tex, tex statmat(B) sdec(3) substat(1) coljust(l;c;l;l) annotate(starsB) asymbol(*,**,***)   ///
+		"","25th"\"",""\"","50th"\"",""\"Business income respondents without business at baseline","75th"\"","") replace	
+frmttable using tab10.tex, tex statmat(Bt) sdec(2) substat(1) coljust(l;c;l;l)  /// annotate(starsB) asymbol(*,**,***) 
 ctitle("Difference in"\"means") merge		
-frmttable using tab10.tex, tex statmat(C) sdec(3) substat(1) coljust(l;c;l;l) annotate(starsB) asymbol(*,**,***)   ///
+frmttable using tab10.tex, tex statmat(Ct) sdec(2) substat(1) coljust(l;c;l;l)  /// annotate(starsC) asymbol(*,**,***)
 ctitle("Difference in"\"means with lag") merge		
 	
