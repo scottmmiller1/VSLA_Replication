@@ -6,10 +6,8 @@
 	
 ** Log and macro
 	* please specify the folder for the data, log-file and outreg. Note: the outreg folder should be in that specific location. 
-	*global d1 "\Users\avuwa\OneDrive\Desktop\PhD\AEB 6933 - Applied Econometrics\Replication paper\VSLA_JDE_replication"
-	*global outreg "$d1\Replication_files\Outreg"
-	global d1 "/Users/scottmiller/Dropbox (UFL)/Research/Projects/VSLA Replication/Replication data and do-file"
-	global outreg "$d1/Outreg"
+	global d1 "\Users\avuwa\OneDrive\Desktop\PhD\AEB 6933 - Applied Econometrics\Replication paper\VSLA_JDE_replication"
+	global outreg "$d1\Replication_files\Outreg"
 	*global dataandlog "$d1"
 	
 	*capture log close
@@ -18,7 +16,6 @@
 	cd "$outreg"
 	
 ** Load data	
-	*use "$d1/impact_replication_final.dta", clear
 	use "$d1/impact_replication_final.dta", clear
 	
 * generate log variables	
@@ -156,7 +153,7 @@ rtitle("Able to acquire loan"\"Asked for credit this year"\"Number of times aske
 * variables 
 * aj1 -aj5
 forvalues i=1/8 {
-	gen aj6_`i' = (aj6 == `i' | aj6b == `i' | aj6c == `i') if aj6 != 0
+	gen aj6_`i' = (aj6 == `i') if aj6 != 0
 	replace aj6_`i' = . if aj6 ==. 
 }
 
@@ -172,7 +169,6 @@ foreach v of varlist aj1 aj2 aj3 aj4 aj5 aj6_1 aj6_2 aj6_3 aj6_4 aj6_5 aj6_6 aj6
 	
 }	
 
-
 * regression and table
 gl tab3_summ1 fspoor4 meals logaeconsifl iganum2_ia pat4pln hb10 cemfloor assets  
 
@@ -183,11 +179,10 @@ forv i = 1/`listsize' {
 	forvalues v=1/5 {
 	quietly {		
 		reg ``i'' treatXlagaj`v' treat lagaj`v' i.blocks if ss==1 & post==1 [pweight=weightlong], vce(cluster vid)
-			lincom _b[treatXlagaj`v'] + _b[treat]
-			return list
-			scalar ``i''_par_`v' = `r(estimate)'
-			scalar ``i''_se_`v' = `r(se)'
-			scalar df_`v'_`i' = `r(df)'
+			ereturn list
+			scalar ``i''_par_`v' = _b[treatXlagaj`v']
+			scalar ``i''_se_`v' = _se[treatXlagaj`v']
+			scalar df_`v'_`i' = `e(df_r)'
 			
 		matrix mat_`i'_`v' = (``i''_par_`v',``i''_se_`v')
 	
@@ -200,11 +195,10 @@ forv i = 1/`listsize' {
 forvalues v=1/5 {
 	quietly {
 		tobit logct_ak2_all treatXlagaj`v' treat lagaj`v' i.blocks if post==1 & ls==1 [pweight=weightlong], vce(cluster vid) ll
-			lincom _b[treatXlagaj`v'] + _b[treat]
-			return list
-			scalar ``i''_par_`v' = `r(estimate)'
-			scalar ``i''_se_`v' = `r(se)'
-			scalar df_`v'_`i' = `r(df)'
+		ereturn list
+			scalar logct_ak2_all_par_`v' = _b[treat]
+			scalar logct_ak2_all_se_`v' = _se[treat]
+			scalar df_`v'_9 = `e(df_r)'
 			
 		matrix mat_9_`v' = (logct_ak2_all_par_`v',logct_ak2_all_se_`v')	
 	}
@@ -260,6 +254,71 @@ ctitle("(4)"\"Denied credit"\"this year") merge
 frmttable using tab2_ext.tex, tex statmat(E) sdec(3) substat(1) coljust(l;c;l;l) annotate(starsE) asymbol(*,**,***) ///
 ctitle("(5)"\"Times credit was"\"denied this year") merge		 					
 			
-		
+
+* Heterogeneous effects based on household propensity to borrow
+* ------------------------------------------------------
+* Create variables with log values
+
+gen aj1_hat = .
+foreach i of var hhid {
+	logit aj1 vslamember iganum2_ia ak2_all totloan anyloan busnum fspoor4 businc2 hhsize headage headedu fhead hb27 anyland assets fertuse valsale [pweight=weightlong] if post==0
+	predict aj1hat
+	replace aj1_hat=aj1hat if hhid == `i' 
+	drop aj1hat
+}
+
+gen high_propen_borrow = 1 if aj1_hat >= 0.75 & aj1_hat <= 1
+replace high_propen_borrow = 0 if aj1_hat < 0.75 
+
+gen mode_propen_borrow = 1 if aj1_hat >= 0.5 & aj1_hat < 0.75
+replace mode_propen_borrow = 0 if mode_propen_borrow == . 
+replace mode_propen_borrow = . if aj1_hat == . 
+
+gen low_propen_borrow = 1 if aj1_hat >= 0 & aj1_hat < 0.5
+replace low_propen_borrow = 0 if aj1_hat > 0.5 
+replace low_propen_borrow = . if aj1_hat == .
+ 
+
+foreach v of varlist high_propen_borrow mode_propen_borrow low_propen_borrow {	
+	* create interaction
+	gen treatX`v' = treat*`v'
+	
+}	
+
+*** covariates
+gl covariates treatXhigh_propen_borrow treatXmode_propen_borrow high_propen_borrow mode_propen_borrow 
+
+reg fspoor4 treat $covariates i.blocks if ss==1 & post==1 [pweight=weightlong], vce(cluster vid)
+lincom treat + treatXhigh_propen_borrow
+lincom treat + treatXmode_propen_borrow
+
+reg meals treat $covariates i.blocks if ss==1 & post==1 [pweight=weightlong], vce(cluster vid)
+lincom treat + treatXhigh_propen_borrow
+lincom treat + treatXmode_propen_borrow
+
+reg logaeconsifl treat $covariates i.blocks if ss==1 & post==1 [pweight=weightlong], vce(cluster vid)
+lincom treat + treatXhigh_propen_borrow
+lincom treat + treatXmode_propen_borrow
+
+reg iganum2_ia treat $covariates i.blocks if ss==1 & post==1 [pweight=weightlong], vce(cluster vid) 
+lincom treat + treatXhigh_propen_borrow
+lincom treat + treatXmode_propen_borrow
+
+reg pat4pln treat $covariates i.blocks if ss==1 & post==1 [pweight=weightlong], vce(cluster vid)
+lincom treat + treatXhigh_propen_borrow
+lincom treat + treatXmode_propen_borrow
+
+reg hb10 treat $covariates i.blocks if ss==1 & post==1 [pweight=weightlong], vce(cluster vid)
+lincom treat + treatXhigh_propen_borrow
+lincom treat + treatXmode_propen_borrow
+
+reg cemfloor treat $covariates i.blocks if ss==1 & post==1 [pweight=weightlong], vce(cluster vid)
+lincom treat + treatXhigh_propen_borrow
+lincom treat + treatXmode_propen_borrow
+
+reg assets treat $covariates i.blocks if ss==1 & post==1 [pweight=weightlong], vce(cluster vid)
+lincom treat + treatXhigh_propen_borrow
+lincom treat + treatXmode_propen_borrow
+
 
 
