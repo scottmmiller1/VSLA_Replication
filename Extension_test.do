@@ -285,10 +285,13 @@ foreach v of varlist high_propen_borrow mode_propen_borrow low_propen_borrow {
 	
 }	
 
-*** covariates
-gl covariates treatXhigh_propen_borrow treatXmode_propen_borrow high_propen_borrow mode_propen_borrow 
 
 **** Loop
+* regression and table
+gl tab12 fspoor4 meals logaeconsifl iganum2_ia pat4pln hb10 cemfloor assets  
+
+local listsize : list sizeof global(tab12)
+tokenize $tab12
 
 forv i = 1/`listsize' {
 foreach v of varlist high_propen_borrow mode_propen_borrow low_propen_borrow {	
@@ -305,6 +308,8 @@ foreach v of varlist high_propen_borrow mode_propen_borrow low_propen_borrow {
   }
 }
 
+*** covariates
+gl covariates treatXhigh_propen_borrow treatXmode_propen_borrow high_propen_borrow mode_propen_borrow 
 
 reg fspoor4 treat $covariates i.blocks if ss==1 & post==1 [pweight=weightlong], vce(cluster vid)
 lincom treat + treatXhigh_propen_borrow
