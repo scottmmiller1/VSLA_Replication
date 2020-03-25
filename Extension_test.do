@@ -6,8 +6,10 @@
 	
 ** Log and macro
 	* please specify the folder for the data, log-file and outreg. Note: the outreg folder should be in that specific location. 
-	global d1 "\Users\avuwa\OneDrive\Desktop\PhD\AEB 6933 - Applied Econometrics\Replication paper\VSLA_JDE_replication"
-	global outreg "$d1\Replication_files\Outreg"
+	*global d1 "\Users\avuwa\OneDrive\Desktop\PhD\AEB 6933 - Applied Econometrics\Replication paper\VSLA_JDE_replication"
+	*global outreg "$d1\Replication_files\Outreg"
+	global d1 "/Users/scottmiller/Dropbox (UFL)/Research/Projects/VSLA Replication/Replication data and do-file"
+	global outreg "$d1/Outreg"
 	*global dataandlog "$d1"
 	
 	*capture log close
@@ -16,6 +18,7 @@
 	cd "$outreg"
 	
 ** Load data	
+	*use "$d1/impact_replication_final.dta", clear
 	use "$d1/impact_replication_final.dta", clear
 	
 * generate log variables	
@@ -153,7 +156,7 @@ rtitle("Able to acquire loan"\"Asked for credit this year"\"Number of times aske
 * variables 
 * aj1 -aj5
 forvalues i=1/8 {
-	gen aj6_`i' = (aj6 == `i') if aj6 != 0
+	gen aj6_`i' = (aj6 == `i' | aj6b == `i' | aj6c == `i') if aj6 != 0
 	replace aj6_`i' = . if aj6 ==. 
 }
 
@@ -169,6 +172,7 @@ foreach v of varlist aj1 aj2 aj3 aj4 aj5 aj6_1 aj6_2 aj6_3 aj6_4 aj6_5 aj6_6 aj6
 	
 }	
 
+
 * regression and table
 gl tab3_summ1 fspoor4 meals logaeconsifl iganum2_ia pat4pln hb10 cemfloor assets  
 
@@ -179,10 +183,11 @@ forv i = 1/`listsize' {
 	forvalues v=1/5 {
 	quietly {		
 		reg ``i'' treatXlagaj`v' treat lagaj`v' i.blocks if ss==1 & post==1 [pweight=weightlong], vce(cluster vid)
-			ereturn list
-			scalar ``i''_par_`v' = _b[treatXlagaj`v']
-			scalar ``i''_se_`v' = _se[treatXlagaj`v']
-			scalar df_`v'_`i' = `e(df_r)'
+			lincom _b[treatXlagaj`v'] + _b[treat]
+			return list
+			scalar ``i''_par_`v' = `r(estimate)'
+			scalar ``i''_se_`v' = `r(se)'
+			scalar df_`v'_`i' = `r(df)'
 			
 		matrix mat_`i'_`v' = (``i''_par_`v',``i''_se_`v')
 	
@@ -195,10 +200,11 @@ forv i = 1/`listsize' {
 forvalues v=1/5 {
 	quietly {
 		tobit logct_ak2_all treatXlagaj`v' treat lagaj`v' i.blocks if post==1 & ls==1 [pweight=weightlong], vce(cluster vid) ll
-		ereturn list
-			scalar logct_ak2_all_par_`v' = _b[treat]
-			scalar logct_ak2_all_se_`v' = _se[treat]
-			scalar df_`v'_9 = `e(df_r)'
+			lincom _b[treatXlagaj`v'] + _b[treat]
+			return list
+			scalar ``i''_par_`v' = `r(estimate)'
+			scalar ``i''_se_`v' = `r(se)'
+			scalar df_`v'_`i' = `r(df)'
 			
 		matrix mat_9_`v' = (logct_ak2_all_par_`v',logct_ak2_all_se_`v')	
 	}
