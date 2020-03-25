@@ -288,6 +288,24 @@ foreach v of varlist high_propen_borrow mode_propen_borrow low_propen_borrow {
 *** covariates
 gl covariates treatXhigh_propen_borrow treatXmode_propen_borrow high_propen_borrow mode_propen_borrow 
 
+**** Loop
+
+forv i = 1/`listsize' {
+foreach v of varlist high_propen_borrow mode_propen_borrow low_propen_borrow {	
+	quietly {		
+		reg ``i'' treatX`v' treat `v' i.blocks if post==1 [pweight=weightlong], vce(cluster vid)
+			ereturn list
+			scalar ``i''_par_`v' = _b[treatX`v']
+			scalar ``i''_se_`v' = _se[treatX`v']
+			scalar df_`v'_`i' = `e(df_r)'
+			
+		matrix mat_`i'_`v' = (``i''_par_`v',``i''_se_`v')
+	
+	}
+  }
+}
+
+
 reg fspoor4 treat $covariates i.blocks if ss==1 & post==1 [pweight=weightlong], vce(cluster vid)
 lincom treat + treatXhigh_propen_borrow
 lincom treat + treatXmode_propen_borrow
