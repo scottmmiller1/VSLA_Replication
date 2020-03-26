@@ -179,10 +179,11 @@ forv i = 1/`listsize' {
 	forvalues v=1/5 {
 	quietly {		
 		reg ``i'' treatXlagaj`v' treat lagaj`v' i.blocks if ss==1 & post==1 [pweight=weightlong], vce(cluster vid)
-			ereturn list
-			scalar ``i''_par_`v' = _b[treatXlagaj`v']
-			scalar ``i''_se_`v' = _se[treatXlagaj`v']
-			scalar df_`v'_`i' = `e(df_r)'
+			lincom _b[treatXlagaj`v'] + _b[treat]
+			return list
+			scalar ``i''_par_`v' = `r(estimate)'
+			scalar ``i''_se_`v' = `r(se)'
+			scalar df_`v'_`i' = `r(df)'
 			
 		matrix mat_`i'_`v' = (``i''_par_`v',``i''_se_`v')
 	
