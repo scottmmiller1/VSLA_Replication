@@ -259,36 +259,38 @@ ctitle("(5)"\"Times credit was"\"denied this year") merge
 
 * Heterogeneous effects based on household propensity to borrow
 * ------------------------------------------------------
-* Create variables with log values
 
+* Generate and estimate logit model for predicted probabilities
 gen aj1_hat = .
 foreach i of var hhid {
-	logit aj1 vslamember iganum2_ia ak2_all totloan anyloan busnum fspoor4 businc2 hhsize headage headedu fhead hb27 anyland assets fertuse valsale [pweight=weightlong] if post==0
+	logit aj1 fspoor4 iganum2_ia vslamember ak2_all totloan anyloan busnum businc2 hhsize headage headedu fhead hb27 anyland assets fertuse valsale [pweight=weightlong] if post==0
 	predict aj1hat
 	replace aj1_hat=aj1hat if hhid == `i' 
 	drop aj1hat
 }
 
-gen high_propen_borrow = 1 if aj1_hat >= 0.75 & aj1_hat <= 1
-replace high_propen_borrow = 0 if aj1_hat < 0.75 
+gen high = 1 if aj1_hat >= 0.75 & aj1_hat <= 1
+replace high = 0 if aj1_hat < 0.75 
 
-gen mode_propen_borrow = 1 if aj1_hat >= 0.5 & aj1_hat < 0.75
-replace mode_propen_borrow = 0 if mode_propen_borrow == . 
-replace mode_propen_borrow = . if aj1_hat == . 
+gen mode = 1 if aj1_hat >= 0.5 & aj1_hat < 0.75
+replace mode = 0 if mode == . 
+replace mode = . if aj1_hat == . 
 
-gen low_propen_borrow = 1 if aj1_hat >= 0 & aj1_hat < 0.5
-replace low_propen_borrow = 0 if aj1_hat > 0.5 
-replace low_propen_borrow = . if aj1_hat == .
+gen low = 1 if aj1_hat >= 0 & aj1_hat < 0.5
+replace low = 0 if aj1_hat > 0.5 
+replace low = . if aj1_hat == .
  
+tab high if post==0
+tab mode if post==0
+tab low if post==0
 
-foreach v of varlist high_propen_borrow mode_propen_borrow low_propen_borrow {	
+ 
+foreach v of varlist high mode low {	
 	* create interaction
 	gen treatX`v' = treat*`v'
 	
 }	
 
-
-**** Loop
 * regression and table
 gl tab12 fspoor4 meals logaeconsifl iganum2_ia pat4pln hb10 cemfloor assets  
 
@@ -296,54 +298,73 @@ local listsize : list sizeof global(tab12)
 tokenize $tab12
 
 forv i = 1/`listsize' {
-foreach v of varlist high_propen_borrow mode_propen_borrow low_propen_borrow {	
+foreach v of varlist high mode low {	
 	quietly {		
-		reg ``i'' treatX`v' treat `v' i.blocks if post==1 [pweight=weightlong], vce(cluster vid)
-			ereturn list
-			scalar ``i''_par_`v' = _b[treatX`v']
-			scalar ``i''_se_`v' = _se[treatX`v']
-			scalar df_`v'_`i' = `e(df_r)'
-			
-		matrix mat_`i'_`v' = (``i''_par_`v',``i''_se_`v')
+		reg ``i'' treatX`v' treat `v' i.blocks if ss==1 & post==1 [pweight=weightlong], vce(cluster vid)
+			lincom _b[treatX`v'] + _b[treat]
+			return list
+			scalar ``i''_par_`v' = `r(estimate)'
+			scalar ``i''_se_`v' = `r(se)'
+			scalar df_`v'_`i' = `r(df)'
+			matrix mat_`i'_`v' = (``i''_par_`v',``i''_se_`v')
 	
 	}
   }
 }
 
-*** covariates
-gl covariates treatXhigh_propen_borrow treatXmode_propen_borrow high_propen_borrow mode_propen_borrow 
+* savings
+foreach v of varlist high mode low {	
+	quietly {
+		tobit logct_ak2_all treatX`v' treat `v' i.blocks if post==1 & ls==1 [pweight=weightlong], vce(cluster vid) ll
+		lincom _b[treatX`v'] + _b[treat]
+		return list
+		scalar logct_ak2_all_par_`v' = `r(estimate)'
+		scalar logct_ak2_all_se_`v' = `r(se)'
+		scalar df_`v'_9 = `r(df)'
+			
+		matrix mat_9_`v' = (logct_ak2_all_par_`v',logct_ak2_all_se_`v')	
+	}
+}	
 
-reg fspoor4 treat $covariates i.blocks if ss==1 & post==1 [pweight=weightlong], vce(cluster vid)
-lincom treat + treatXhigh_propen_borrow
-lincom treat + treatXmode_propen_borrow
-
-reg meals treat $covariates i.blocks if ss==1 & post==1 [pweight=weightlong], vce(cluster vid)
-lincom treat + treatXhigh_propen_borrow
-lincom treat + treatXmode_propen_borrow
-
-reg logaeconsifl treat $covariates i.blocks if ss==1 & post==1 [pweight=weightlong], vce(cluster vid)
-lincom treat + treatXhigh_propen_borrow
-lincom treat + treatXmode_propen_borrow
-
-reg iganum2_ia treat $covariates i.blocks if ss==1 & post==1 [pweight=weightlong], vce(cluster vid) 
-lincom treat + treatXhigh_propen_borrow
-lincom treat + treatXmode_propen_borrow
-
-reg pat4pln treat $covariates i.blocks if ss==1 & post==1 [pweight=weightlong], vce(cluster vid)
-lincom treat + treatXhigh_propen_borrow
-lincom treat + treatXmode_propen_borrow
-
-reg hb10 treat $covariates i.blocks if ss==1 & post==1 [pweight=weightlong], vce(cluster vid)
-lincom treat + treatXhigh_propen_borrow
-lincom treat + treatXmode_propen_borrow
-
-reg cemfloor treat $covariates i.blocks if ss==1 & post==1 [pweight=weightlong], vce(cluster vid)
-lincom treat + treatXhigh_propen_borrow
-lincom treat + treatXmode_propen_borrow
-
-reg assets treat $covariates i.blocks if ss==1 & post==1 [pweight=weightlong], vce(cluster vid)
-lincom treat + treatXhigh_propen_borrow
-lincom treat + treatXmode_propen_borrow
+matrix A = mat_1_high
+matrix B = mat_1_mode
+matrix C = mat_1_low
 
 
 
+forv i = 2/9 { // appends into single matrix
+	matrix A = A \ mat_`i'_high
+	matrix B = B \ mat_`i'_mode
+	matrix C = C \ mat_`i'_low
+	
+}	
+
+
+gl mat A B C 
+local mlistsize : list sizeof global(mat)
+tokenize $mat
+
+forv m = 1/`mlistsize' {
+matrix stars``m''=J(9,2,0)
+	foreach k of varlist high mode low {	
+			matrix stars``m''[`k',1] =   ///
+			(abs(``m''[`k',1]/``m''[`k',2]) > invttail(df_`m'_`k',0.1/2)) +  ///
+			(abs(``m''[`k',1]/``m''[`k',2]) > invttail(df_`m'_`k',0.05/2)) +  ///
+			(abs(``m''[`k',1]/``m''[`k',2]) > invttail(df_`m'_`k',0.01/2))
+		}
+}
+
+
+* Table
+frmttable using tab14_ext.tex, tex statmat(A) sdec(3) substat(1) coljust(l;c;l;l) annotate(starsA) asymbol(*,**,***) ///
+title("Table 14 - Heterogeneous effects across propensity to borrow dimensions") ///
+ctitle("","(1)"\"Outcome","High Propensity to borrow") ///
+rtitle("Number of months with fewer than three meals a day"\""\"Number of meals yesterday"\""\ ///
+		"17-Food consumption per week per adult equivalent (MK, log)"\""\ ///
+		"Number of income-generating activities (including agriculture and livestock)"\""\ ///
+		"Per capita expenditure predicted by USAID PAT (log)"\""\ ///
+		"Size of house (number of rooms)"\""\"House has cement floor"\""\"Asset count"\""\"Total savings (log)"\"") replace
+frmttable using tab14_ext.tex, tex statmat(B) sdec(3) substat(1) coljust(l;c;l;l) annotate(starsB) asymbol(*,**,***) ///
+ctitle("(2)"\"Moderate Propensity to borrow") merge
+frmttable using tab14_ext.tex, tex statmat(C) sdec(3) substat(1) coljust(l;c;l;l) annotate(starsC) asymbol(*,**,***) ///
+ctitle("(3)"\"Low Propensity to borrow") merge		
