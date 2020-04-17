@@ -192,18 +192,27 @@ local listsize : list sizeof global(tab3_summ1)
 tokenize $tab3_summ1
 
 forv i = 1/`listsize' {
-	forvalues v=1/4 {
 	quietly {		
-		reg ``i'' treatXlagconst_`v' treat lagconst_`v' i.blocks if ss==1 & post==1 [pweight=weightlong], vce(cluster vid)
-			lincom _b[treatXlagconst_`v'] + _b[treat]
+		reg ``i'' treat treatXlagconst_2 treatXlagconst_3 treatXlagconst_4 lagconst_2 lagconst_3 lagconst_4 i.blocks if ss==1 & post==1 [pweight=weightlong], vce(cluster vid)
 			return list
-			scalar ``i''_par_`v' = `r(estimate)'
-			scalar ``i''_se_`v' = `r(se)'
-			scalar df_`v'_`i' = `r(df)'
+			scalar ``i''_t = _b[treat]
+			scalar ``i''_se_t = _se[treat]
+			scalar df_t = `e(df_r)'
 			
-		matrix mat_`i'_`v' = (``i''_par_`v',``i''_se_`v')
+			scalar ``i''_tX2 = _b[treatXlagconst_2]
+			scalar ``i''_se_tX2 = _se[treatXlagconst_2]
+			scalar ``i''_tX3 = _b[treatXlagconst_3]
+			scalar ``i''_se_tX3 = _se[treatXlagconst_3]
+			scalar ``i''_tX4 = _b[treatXlagconst_4]
+			scalar ``i''_se_tX4 = _se[treatXlagconst_4]
+			
+			
+		matrix mat_`i'_t = (``i''_t,``i''_se_t)
+		matrix mat_`i'_tX2 = (``i''_tX2,``i''_se_tX2)
+		matrix mat_`i'_tX3 = (``i''_tX3,``i''_se_tX3)
+		matrix mat_`i'_tX4 = (``i''_tX4,``i''_se_tX4)
 	
-	}
+	
 	}
 }
 
@@ -223,17 +232,17 @@ forvalues v=1/4 {
 }	
 */
 	
-matrix A = mat_1_1
-matrix B = mat_1_2
-matrix C = mat_1_3
-matrix D = mat_1_4
+matrix A = mat_1_t
+matrix B = mat_1_tX2
+matrix C = mat_1_tX3
+matrix D = mat_1_tX4
 
 
 forv i = 2/8 { // appends into single matrix
-	matrix A = A \ mat_`i'_1
-	matrix B = B \ mat_`i'_2
-	matrix C = C \ mat_`i'_3
-	matrix D = D \ mat_`i'_4
+	matrix A = A \ mat_`i'_t
+	matrix B = B \ mat_`i'_tX2
+	matrix C = C \ mat_`i'_tX3
+	matrix D = D \ mat_`i'_tX4
 	
 }	
 
@@ -246,9 +255,9 @@ forv m = 1/`mlistsize' {
 matrix stars``m''=J(8,2,0)
 		forvalues k = 1/8{
 			matrix stars``m''[`k',1] =   ///
-			(abs(``m''[`k',1]/``m''[`k',2]) > invttail(df_`m'_`k',0.1/2)) +  ///
-			(abs(``m''[`k',1]/``m''[`k',2]) > invttail(df_`m'_`k',0.05/2)) +  ///
-			(abs(``m''[`k',1]/``m''[`k',2]) > invttail(df_`m'_`k',0.01/2))
+			(abs(``m''[`k',1]/``m''[`k',2]) > invttail(df_t,0.1/2)) +  ///
+			(abs(``m''[`k',1]/``m''[`k',2]) > invttail(df_t,0.05/2)) +  ///
+			(abs(``m''[`k',1]/``m''[`k',2]) > invttail(df_t,0.01/2))
 		}
 }
 
@@ -256,21 +265,17 @@ matrix stars``m''=J(8,2,0)
 * Table
 frmttable using tab3_ext.tex, tex statmat(A) sdec(3) substat(1) coljust(l;c;l;l) annotate(starsA) asymbol(*,**,***) ///
 title("Table 13 - Heterogeneous Effects Across Credit Rationing Dimensions") ///
-ctitle("","(1)"\"Outcome","Credit constrained") ///
+ctitle("","(1)"\"Outcome","Treat") ///
 rtitle("Number of months with fewer than three meals a day"\""\"Number of meals yesterday"\""\ ///
 		"17-Food consumption per week per adult equivalent (MK, log)"\""\ ///
 		"Number of income-generating activities (including agriculture and livestock)"\""\ ///
 		"Per capita expenditure predicted by USAID PAT (log)"\""\ ///
 		"Size of house (number of rooms)"\""\"House has cement floor"\""\"Asset count"\""\"Total savings (log)"\"") replace
 frmttable using tab3_ext.tex, tex statmat(B) sdec(3) substat(1) coljust(l;c;l;l) annotate(starsB) asymbol(*,**,***) ///
-ctitle("(2)"\"Quantity rationed") merge
+ctitle("(2)"\"Treat*Quantity") merge
 frmttable using tab3_ext.tex, tex statmat(C) sdec(3) substat(1) coljust(l;c;l;l) annotate(starsC) asymbol(*,**,***) ///
-ctitle("(3)"\"Risk rationed") merge		
+ctitle("(3)"\"Treat*Risk") merge		
 frmttable using tab3_ext.tex, tex statmat(D) sdec(3) substat(1) coljust(l;c;l;l) annotate(starsD) asymbol(*,**,***) ///
-ctitle("(4)"\"Access rationed") merge			 						
-	
-	
-	
-	
+ctitle("(4)"\"Treat*Access") merge			 						
 	
 	

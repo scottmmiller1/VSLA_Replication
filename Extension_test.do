@@ -6,8 +6,10 @@
 	
 ** Log and macro
 	* please specify the folder for the data, log-file and outreg. Note: the outreg folder should be in that specific location. 
-	global d1 "\Users\avuwa\OneDrive\Desktop\PhD\AEB 6933 - Applied Econometrics\Replication paper\VSLA_JDE_replication"
-	global outreg "$d1\Replication_files\Outreg"
+	*global d1 "\Users\avuwa\OneDrive\Desktop\PhD\AEB 6933 - Applied Econometrics\Replication paper\VSLA_JDE_replication"
+	*global outreg "$d1\Replication_files\Outreg"
+	global d1 "/Users/scottmiller/Dropbox (UFL)/Research/Projects/VSLA Replication/Replication data and do-file"
+	global outreg "$d1/Outreg"
 	*global dataandlog "$d1"
 	
 	*capture log close
@@ -190,7 +192,6 @@ forv i = 1/`listsize' {
 	}
 	}
 }
-
 
 * savings
 forvalues v=1/5 {
