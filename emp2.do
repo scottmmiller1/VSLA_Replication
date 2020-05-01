@@ -5,15 +5,8 @@
 **********************************
 	
 ** Log and macro
-	* please specify the folder for the data, log-file and outreg. Note: the outreg folder should be in that specific location. 
-	*global d1 "\Users\avuwa\OneDrive\Desktop\PhD\AEB 6933 - Applied Econometrics\Replication paper\VSLA_JDE_replication"
-	*global outreg "$d1\Replication_files\Outreg"
-	global d1 "/Users/scottmiller/Dropbox (UFL)/Research/Projects/VSLA Replication/Replication data and do-file"
-	global outreg "$d1/Outreg"
-	*global dataandlog "$d1"
-	
-	*capture log close
-	*log using "$dataandlog\Finalresubmission.smcl", replace	
+	capture log close
+	log using "$d1/emp2.smcl", replace	
 	
 	cd "$outreg"
 	
@@ -340,23 +333,8 @@ forv i = 2/9 { // appends into single matrix
 }	
 
 
-gl mat A B C 
-local mlistsize : list sizeof global(mat)
-tokenize $mat
-
-forv m = 1/`mlistsize' {
-matrix stars``m''=J(9,2,0)
-	foreach k of varlist high mode low {	
-			matrix stars``m''[`k',1] =   ///
-			(abs(``m''[`k',1]/``m''[`k',2]) > invttail(df_`m'_`k',0.1/2)) +  ///
-			(abs(``m''[`k',1]/``m''[`k',2]) > invttail(df_`m'_`k',0.05/2)) +  ///
-			(abs(``m''[`k',1]/``m''[`k',2]) > invttail(df_`m'_`k',0.01/2))
-		}
-}
-
-
 * Table
-frmttable using tab14_ext.tex, tex statmat(A) sdec(3) substat(1) coljust(l;c;l;l) annotate(starsA) asymbol(*,**,***) ///
+frmttable using tab14_ext.tex, tex statmat(A) sdec(3) substat(1) coljust(l;c;l;l) ///
 title("Table 14 - Heterogeneous effects across propensity to borrow dimensions") ///
 ctitle("","(1)"\"Outcome","High Propensity to borrow") ///
 rtitle("Number of months with fewer than three meals a day"\""\"Number of meals yesterday"\""\ ///
@@ -364,7 +342,9 @@ rtitle("Number of months with fewer than three meals a day"\""\"Number of meals 
 		"Number of income-generating activities (including agriculture and livestock)"\""\ ///
 		"Per capita expenditure predicted by USAID PAT (log)"\""\ ///
 		"Size of house (number of rooms)"\""\"House has cement floor"\""\"Asset count"\""\"Total savings (log)"\"") replace
-frmttable using tab14_ext.tex, tex statmat(B) sdec(3) substat(1) coljust(l;c;l;l) annotate(starsB) asymbol(*,**,***) ///
+frmttable using tab14_ext.tex, tex statmat(B) sdec(3) substat(1) coljust(l;c;l;l) ///
 ctitle("(2)"\"Moderate Propensity to borrow") merge
-frmttable using tab14_ext.tex, tex statmat(C) sdec(3) substat(1) coljust(l;c;l;l) annotate(starsC) asymbol(*,**,***) ///
+frmttable using tab14_ext.tex, tex statmat(C) sdec(3) substat(1) coljust(l;c;l;l) ///
 ctitle("(3)"\"Low Propensity to borrow") merge		
+
+log close

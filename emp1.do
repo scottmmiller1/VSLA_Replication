@@ -8,13 +8,8 @@
 **********************************
 	
 ** Log and macro
-	* please specify the folder for the data, log-file and outreg. Note: the outreg folder should be in that specific location. 
-	global d1 "/Users/scottmiller/Dropbox (UFL)/Labor Economics/Empirical Project/Ksoll et al., 2016/Replication data and do-file"
-	global outreg "$d1/Outreg"
-	*global dataandlog "$d1"
-	
-	*capture log close
-	*log using "$dataandlog\Finalresubmission.smcl", replace	
+	capture log close
+	log using "$d1\emp1.smcl", replace	
 	
 	cd "$outreg"
 	
@@ -1636,3 +1631,5 @@ ctitle("Difference in"\"means") merge
 frmttable using tab10.tex, tex statmat(Ct) sdec(2) substat(1) coljust(l;c;l;l)  /// annotate(starsC) asymbol(*,**,***)
 ctitle("Difference in"\"means with lag") merge		
 	
+	
+log close

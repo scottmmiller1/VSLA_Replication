@@ -5,16 +5,8 @@
 **********************************
 	
 ** Log and macro
-	* please specify the folder for the data, log-file and outreg. Note: the outreg folder should be in that specific location. 
-	*global d1 "\Users\avuwa\OneDrive\Desktop\PhD\AEB 6933 - Applied Econometrics\Replication paper\VSLA_JDE_replication"
-	*global outreg "$d1\Replication_files\Outreg"
-	global d1 "/Users/scottmiller/Dropbox (UFL)/Research/Projects/VSLA Replication/Replication data and do-file"
-	global outreg "$d1/Outreg"
-	
-	*global dataandlog "$d1"
-	
-	*capture log close
-	*log using "$dataandlog\Finalresubmission.smcl", replace	
+	capture log close
+	log using "$d1/emp3.smcl", replace	
 	
 	cd "$outreg"
 	
@@ -43,11 +35,6 @@ xtset hhidnum t
 
 lab var logaeconsifl "17-Food consumption per week per adult equivalent (MK, log)"		
 * -----------------------------------------------	
-	
-	
-	
-	
-	
 	
 
 ** creating credit rationing definitions (Guirkinger & Boucher, 2008)
@@ -279,3 +266,4 @@ frmttable using tab3_ext.tex, tex statmat(D) sdec(3) substat(1) coljust(l;c;l;l)
 ctitle("(4)"\"Treat*Access") merge			 						
 	
 	
+log close
